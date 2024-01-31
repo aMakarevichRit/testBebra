@@ -1,33 +1,26 @@
-// RestaurantLayoutEditor.js
-
+import React, { useRef, useState } from 'react';
 import { Stage, Container, Sprite } from '@pixi/react';
-import tableSmall from './assets/round_table_small.png';
-import chairSmall from './assets/chair_small.png'
 import { Texture } from 'pixi.js';
-import { useRef, useState } from 'react';
+import tableSmall from './assets/round_table_small.png';
+import chairSmall from './assets/chair_small.png';
 
-const width = 800;
-const height = 500;
-const backgroundColor = 0x1d2330;
-
-let index = 1;
-
-const DraggableBox = ({ tint, x = 0, y = 0,texture, ...props }) => {
+const DraggableBox = ({ tint, x = 0, y = 0, texture, ...props }) => {
   const isDragging = useRef(false);
   const offset = useRef({ x: 0, y: 0 });
-  const [position, setPosition] = useState({ x: x || 0, y: y || 0 })
+  const [position, setPosition] = useState({ x: x || 0, y: y || 0 });
   const [alpha, setAlpha] = useState(1);
-  const [zIndex, setZIndex] =useState(index);
-  
+  const [zIndex, setZIndex] = useState(1);
+  const [rotation, setRotation] = useState(0);
+
   function onStart(e) {
-    isDragging.current = true;    
+    isDragging.current = true;
     offset.current = {
       x: e.data.global.x - position.x,
-      y: e.data.global.y - position.y
+      y: e.data.global.y - position.y,
     };
-    
+
     setAlpha(0.5);
-    setZIndex(index++);
+    setZIndex((prevIndex) => prevIndex + 1);
   }
 
   function onEnd() {
@@ -40,8 +33,13 @@ const DraggableBox = ({ tint, x = 0, y = 0,texture, ...props }) => {
       setPosition({
         x: e.data.global.x - offset.current.x,
         y: e.data.global.y - offset.current.y,
-      })
+      });
     }
+  }
+
+  function handleClick() {
+    // Rotate the texture by 90 degrees
+    setRotation((prevRotation) => (prevRotation + Math.PI / 2) % (Math.PI * 2));
   }
 
   return (
@@ -59,22 +57,23 @@ const DraggableBox = ({ tint, x = 0, y = 0,texture, ...props }) => {
       pointerup={onEnd}
       pointerupoutside={onEnd}
       pointermove={onMove}
+      click={handleClick}
+      rotation={rotation}
+      anchor={{ x: 0.5, y: 0.5 }}
     />
   );
 };
 
 const Editor = () => {
-
-
   return (
-    <Stage width={800} height={600} options={{ backgroundColor }}>
+    <Stage width={800} height={600} options={{backgroundColor: 0x1d2330}}>
       <Container sortableChildren={true}>
-      <DraggableBox x={0} texture={Texture.from(tableSmall)} />
-        <DraggableBox  x={100} texture={Texture.from(chairSmall)} />
-        <DraggableBox  x={200}texture={Texture.from(tableSmall)} />
+        <DraggableBox x={100} y={100} texture={Texture.from(tableSmall)} />
+        <DraggableBox x={200} y={100} texture={Texture.from(chairSmall)} />
+        <DraggableBox x={300} y={100} texture={Texture.from(tableSmall)} />
       </Container>
     </Stage>
   );
 };
 
-export  {Editor};
+export default Editor;
