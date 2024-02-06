@@ -130,7 +130,7 @@ const DraggableBox = memo(
 				click={handleClick}
 				onrightclick={onRightClick}
 				anchor={{ x: 0.5, y: 0.5 }}
-				scale={scaleOptions[0]}
+				scale={scaleOptions[scaleOptionIndex]}
 				ref={nodeRef}
 				{...props}
 			/>

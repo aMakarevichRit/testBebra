@@ -170,14 +170,14 @@ const Editor = () => {
 				}}
 			>
 				<Stage
-					style={{ flex: 1, height: window.innerHeight }}
-					options={{ backgroundColor: 0x1d2330 }}
+					options={{ backgroundColor: 0x1d2330, resizeTo: window }}
 					raf={false}
 					onContextMenu={(e) => e.preventDefault()}
 					onPointerDown={(e) => e.preventDefault()}
-					width={width} height={height}
 				>
-					<Container ref={appRef} sortableChildren={true}>{boxes}</Container>
+					<Container ref={appRef} sortableChildren={true}>
+						{boxes}
+					</Container>
 				</Stage>
 				{/* <div>
 					<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
