@@ -1,29 +1,24 @@
 // eslint-disable-next-line
 // @ts-ignore
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Stage, Container, Sprite, render } from '@pixi/react';
-import { Texture, Sprite as PIXISprite } from 'pixi.js';
-import tableSmall from './assets/round_table_small.png';
-import chairSmall from './assets/chair_small.png';
+import { Stage, Container, Graphics } from '@pixi/react';
+import { Texture, Sprite as PIXISprite, RoundedRectangle } from 'pixi.js';
+import tableSmall from './assets/table2.png';
+import table3 from './assets/table3.png';
+import seat from './assets/seat-v4.png';
 import ErrorBoundary from './ErrorBoundary';
 import DraggableBox from './DraggableBox';
+import Rectangle from './Rectangle';
 
-const width = 800;
-const height = 500;
+const idToTextureMap = {
+	table: tableSmall,
+	table3: table3,
+	seat: seat,
+};
 
 const saveStateToJson = (objects) => {
 	debugger;
-	console.log('objects is here', objects);
 	const state = objects.map(({ id, sprite: obj }) => {
-		console.log({
-			id,
-			x: obj.x,
-			y: obj.y,
-			rotation: obj.rotation,
-			scaleIndex: obj.scaleIndex,
-			textureSource: obj.texture.textureCacheIds[0], // Assuming only one texture per sprite
-		});
-
 		return {
 			id,
 			x: obj.x,
@@ -33,7 +28,7 @@ const saveStateToJson = (objects) => {
 			textureSource: obj.texture.textureCacheIds[0], // Assuming only one texture per sprite
 		};
 	});
-	return JSON.stringify(state);
+	return JSON.stringify(state, null, 2);
 };
 
 const loadStateFromJson = (jsonString) => {
@@ -58,6 +53,8 @@ const loadStateFromJson = (jsonString) => {
 
 const Editor = () => {
 	const [objects, setObjects] = useState([]);
+	const [json, setJson] = useState('');
+
 	// const [refObjects, setRefObjects] = useState([]);
 	const [savedState, setSavedState] = useState('');
 	const appRef = useRef(null);
@@ -67,7 +64,7 @@ const Editor = () => {
 		table.rotation = 0;
 		table.scaleIndex = 0;
 
-		const chair = new PIXISprite(Texture.from(chairSmall));
+		const chair = new PIXISprite(Texture.from(seat));
 		chair.position = { x: 200, y: 100 };
 		chair.rotation = 0;
 		chair.scaleIndex = 0;
@@ -80,9 +77,6 @@ const Editor = () => {
 		// 	<Sprite texture={Texture.from(tableSmall)} />,
 		// 	<Sprite texture={Texture.from(chairSmall)} />,
 		// ]);
-		render(<Editor />, appRef.current);
-		render(<Editor />, appRef.current);
-		render(<Editor />, appRef.current);
 	}, []);
 
 	const handleDragEnd = useCallback((newState, index) => {
@@ -92,7 +86,6 @@ const Editor = () => {
 				const updatedSprite = new PIXISprite(Texture.from(obj.texture.textureCacheIds[0]));
 
 				if (i === index) {
-					console.log('newState is here', newState);
 					updatedSprite.position = newState.position;
 					updatedSprite.rotation = newState.rotation;
 					updatedSprite.scaleIndex = newState.scaleIndex;
@@ -113,6 +106,7 @@ const Editor = () => {
 
 	const onSaveState = useCallback(() => {
 		const savedState = saveStateToJson(objects);
+		setJson(savedState);
 		setSavedState(savedState);
 	}, [objects]);
 
@@ -125,7 +119,6 @@ const Editor = () => {
 	}, [savedState]);
 
 	const boxes = objects.map(({ id, sprite: obj }, index) => {
-		// console.log('obj is here', obj);
 		debugger;
 		return (
 			<DraggableBox
@@ -135,13 +128,16 @@ const Editor = () => {
 				y={obj.position.y}
 				rotation={obj.rotation}
 				scaleIndex={obj.scaleIndex}
+				scale={{ x: 0.3, y: 0.3 }}
 				onDragEnd={(newState) => handleDragEnd(newState, index)}
 			/>
 		);
 	});
 
 	const onAddObject = useCallback((type) => {
-		const sprite = new PIXISprite(Texture.from(type === 'table' ? tableSmall : 'chairSmall'));
+		const sprite = new PIXISprite(Texture.from(idToTextureMap[type]));
+		sprite.width = 400;
+		sprite.height = 400;
 		sprite.position = { x: 100, y: 100 };
 		sprite.rotation = 0;
 		sprite.scaleIndex = 0;
@@ -156,6 +152,7 @@ const Editor = () => {
 				flexDirection: 'column',
 				gap: 20,
 				width: '100%',
+				height: '100vh', // Ensure the component fills the viewport height
 			}}
 		>
 			<div>
@@ -166,30 +163,43 @@ const Editor = () => {
 				style={{
 					display: 'flex',
 					gap: 20,
-					height: '100%',
+					width: '100%',
 				}}
 			>
 				<Stage
-					options={{ backgroundColor: 0x1d2330, resizeTo: window }}
+					options={{
+						backgroundColor: 0x1d2330,
+					}}
 					raf={false}
 					onContextMenu={(e) => e.preventDefault()}
 					onPointerDown={(e) => e.preventDefault()}
+					renderOnComponentChange={true}
+					width={1100}
+					height={780}
 				>
 					<Container ref={appRef} sortableChildren={true}>
 						{boxes}
+						{/* <ResizableBox texture={Texture.from(table3)} x={300} y={300} /> */}
+						{/* <ResizableBox texture={Texture.from(chairSmall)} x={400} y={300} /> */}
 					</Container>
 				</Stage>
-				{/* <div>
+
+				<div>
 					<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 						<img src={tableSmall} width={120} height={120} />
 						<button onClick={() => onAddObject('table')}>Add table</button>
 					</div>
 					<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-						<img src={chairSmall} width={120} height={120} />
-						<button onClick={() => onAddObject('chair')}>Add chair</button>
+						<img src={table3} width={120} height={120} />
+						<button onClick={() => onAddObject('table3')}>Add table</button>
 					</div>
-				</div> */}
+					<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+						<img src={seat} width={120} height={120} />
+						<button onClick={() => onAddObject('seat')}>Add seat</button>
+					</div>
+				</div>
 			</div>
+			<pre style={{ maxHeight: '600px', height: '100%' }}>{json}</pre>
 		</div>
 	);
 };
@@ -201,26 +211,3 @@ const EditorWithErrorBoundary = () => (
 );
 
 export default EditorWithErrorBoundary;
-
-{
-	/* <Container sortableChildren={true} interactive={true}>
-				<DraggableBox
-					x={100}
-					y={100}
-					texture={Texture.from(tableSmall)}
-					containerRef={containerRef}
-				/>
-				<DraggableBox
-					x={200}
-					y={100}
-					texture={Texture.from(chairSmall)}
-					containerRef={containerRef}
-				/>
-				<DraggableBox
-					x={300}
-					y={100}
-					texture={Texture.from(tableSmall)}
-					containerRef={containerRef}
-				/>
-			</Container> */
-}

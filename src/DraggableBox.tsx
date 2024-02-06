@@ -9,17 +9,6 @@ const scaleOptions = [
 	{ x: 3, y: 3 },
 ];
 
-const getSpriteBounds = (sprite) => {
-	const { x, y, width, height, anchor } = sprite;
-	const pivotX = width * anchor.x;
-	const pivotY = height * anchor.y;
-	const scale = { x: sprite.scale.x, y: sprite.scale.y };
-
-	const topLeft = { x: x - pivotX * scale.x, y: y - pivotY * scale.y };
-
-	return topLeft;
-};
-
 const DraggableBox = memo(
 	({
 		x = 0,
@@ -32,7 +21,6 @@ const DraggableBox = memo(
 	}) => {
 		const isDragging = useRef(false);
 		const isClicking = useRef(false);
-		const nodeRef = useRef(null);
 		const offset = useRef({ x: 0, y: 0, shiftX: 0, shiftY: 0 });
 		const [position, setPosition] = useState({ x: x || 0, y: y || 0 });
 		const [alpha, setAlpha] = useState(1);
@@ -57,19 +45,6 @@ const DraggableBox = memo(
 				isDragging.current = true;
 				isClicking.current = true;
 				debugger;
-				// console.log('position before offset', position.x, position.y);
-				const bounds = getSpriteBounds(nodeRef.current);
-				console.log(
-					'global',
-					e.data.global,
-					'\nbounds',
-					bounds,
-					'\ndiff',
-					{ x: e.data.global.x - bounds.x, y: e.data.global.y - bounds.y },
-					'\nposition',
-					position.x,
-					position.y
-				);
 				offset.current = {
 					x: e.originalEvent.clientX - e.data.global.x,
 					y: e.originalEvent.clientY - e.data.global.y,
@@ -77,7 +52,6 @@ const DraggableBox = memo(
 					shiftY: e.data.global.y - position.y,
 				};
 
-				// console.log('offset', offset.current);
 				setAlpha(0.5);
 				setZIndex((prevIndex) => prevIndex + 1);
 				document.addEventListener('pointermove', onMove);
@@ -125,13 +99,11 @@ const DraggableBox = memo(
 				pointerdown={onStart}
 				pointerup={onEnd}
 				pointerupoutside={onEnd}
-				// pointermove={onMove}
 				rotation={rotation}
 				click={handleClick}
 				onrightclick={onRightClick}
 				anchor={{ x: 0.5, y: 0.5 }}
 				scale={scaleOptions[scaleOptionIndex]}
-				ref={nodeRef}
 				{...props}
 			/>
 		);
