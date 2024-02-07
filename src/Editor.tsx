@@ -57,8 +57,7 @@ const Editor = () => {
 	const [objects, setObjects] = useState([]);
 	const [json, setJson] = useState('');
 	const [selected, setSelected] = useState({});
-	const [isEditMode, setIsEditMode] = useState(false);
-	console.log('test')
+	const [isEditMode, setIsEditMode] = useState(true);
 	// const [refObjects, setRefObjects] = useState([]);
 	const [savedState, setSavedState] = useState('');
 	useEffect(() => {
@@ -73,8 +72,8 @@ const Editor = () => {
 		chair.scaleIndex = 0;
 
 		setObjects([
-			{ id: 'table', sprite: table },
-			{ id: 'chair', sprite: chair },
+			{ id: '1', sprite: table },
+			{ id: '2', sprite: chair },
 		]);
 		// setRefObjects([
 		// 	<Sprite texture={Texture.from(tableSmall)} />,
@@ -82,21 +81,66 @@ const Editor = () => {
 		// ]);
 	}, []);
 
+	const handleCopy = useCallback(() => {
+		navigator.clipboard
+			.writeText(JSON.stringify(selected))
+			.then(() => {
+				console.log('Data copied to clipboard:', selected);
+			})
+			.catch((error) => {
+				console.error('Error copying data:', error);
+			});
+	}, [selected]);
+
+	const handlePaste = useCallback(() => {
+		navigator.clipboard
+			.readText()
+			.then((text) => {
+				try {
+					const parsedData = JSON.parse(text);
+					debugger;
+					setObjects((prevObjects) => {
+						debugger;
+						return [
+							...prevObjects,
+							...Object.keys(parsedData).map((id) => ({
+								...prevObjects.filter((obj) => obj.id === id)[0],
+								id: id + Math.random(),
+							})),
+						];
+					});
+					console.log('Data pasted from clipboard:', parsedData);
+				} catch (error) {
+					console.error('Error parsing pasted data:', error);
+				}
+			})
+			.catch((error) => {
+				console.error('Error pasting data:', error);
+			});
+	}, []);
+
 	useEffect(() => {
-		const handleKeyDown = (event) => {
-			if (event.key === 'Delete') {
-				debugger;
-				const updatetObjects = objects.filter((obj) => !selected[obj.id]);
-				setObjects(updatetObjects);
-			}
-		};
+		if (isEditMode) {
+			const handleKeyDown = (event) => {
+				if (event.key === 'Delete') {
+					const updatetObjects = objects.filter((obj) => !selected[obj.id]);
+					setObjects(updatetObjects);
+				}
 
-		document.addEventListener('keydown', handleKeyDown);
+				if (event.ctrlKey && event.key === 'c') {
+					handleCopy();
+				} else if (event.ctrlKey && event.key === 'v') {
+					handlePaste();
+				}
+			};
 
-		return () => {
-			document.removeEventListener('keydown', handleKeyDown);
-		};
-	}, [objects, selected]);
+			document.addEventListener('keydown', handleKeyDown);
+
+			return () => {
+				document.removeEventListener('keydown', handleKeyDown);
+			};
+		}
+	}, [objects, selected, isEditMode, handleCopy, handlePaste]);
 
 	const handleDragEnd = useCallback((newState, index) => {
 		setObjects((prevObjects) => {
@@ -136,6 +180,7 @@ const Editor = () => {
 		}, 100);
 	}, [savedState]);
 
+	console.log('rerender editor');
 	const boxes = objects.map(({ id, sprite: obj }, index) => {
 		function handleTap(e) {
 			const updateSelected = { ...selected };
@@ -155,9 +200,10 @@ const Editor = () => {
 				y={obj.position.y}
 				rotation={obj.rotation}
 				scaleIndex={obj.scaleIndex}
-				onDragEnd={(newState) => handleDragEnd(newState, index)}
+				onDragEnd={isEditMode ? (newState) => handleDragEnd(newState, index) : null}
 				cursor="pointer"
 				pointertap={handleTap}
+				isEditMode={isEditMode}
 				tint={selected[id] ? '#F43F5E' : 0xffffff}
 			/>
 		);
@@ -171,7 +217,10 @@ const Editor = () => {
 		sprite.rotation = 0;
 		sprite.scaleIndex = 0;
 
-		setObjects((prevObjects) => [...prevObjects, { id: prevObjects.length, sprite }]);
+		setObjects((prevObjects) => [
+			...prevObjects,
+			{ id: (prevObjects.length + 1).toString(), sprite },
+		]);
 	}, []);
 
 	return (
@@ -187,6 +236,8 @@ const Editor = () => {
 			<div>
 				<button onClick={onSaveState}>Save State</button>
 				<button onClick={onLoadState}>Load State</button>
+				<button onClick={() => setIsEditMode((prev) => !prev)}>Edit mode</button>
+				<p>Edit mode: {isEditMode ? 'on' : 'off'}</p>
 			</div>
 			<div
 				style={{
@@ -214,12 +265,12 @@ const Editor = () => {
 				</Stage>
 
 				<div>
-					<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+					{/* <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 						<img src={tableSmall} width={120} height={120} />
 						<button onClick={() => onAddObject('table')}>Add table</button>
-					</div>
+					</div> */}
 					<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-						<img src={table4} width={120} height={120} />
+						<img src={table4} width={120} height={220} />
 						<button onClick={() => onAddObject('table4')}>Add table</button>
 					</div>
 					<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

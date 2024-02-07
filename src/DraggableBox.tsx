@@ -9,8 +9,10 @@ const DraggableBox = memo(
 		y = 0,
 		rotation: defaultRotation = 0,
 		scaleIndex: defaultScaleIndex = 0,
+		zIndex: defaultZIndex = 10,
 		onDragEnd,
 		texture,
+		isEditMode,
 		...props
 	}) => {
 		const app = useApp();
@@ -19,7 +21,7 @@ const DraggableBox = memo(
 		const offset = useRef({ shiftX: 0, shiftY: 0 });
 		const [position, setPosition] = useState({ x: x || 0, y: y || 0 });
 		const [alpha, setAlpha] = useState(1);
-		const [zIndex, setZIndex] = useState(10);
+		const [zIndex, setZIndex] = useState(defaultZIndex);
 		const [rotation, setRotation] = useState(defaultRotation);
 		const dropTarget = useRef(null);
 		const [scaleOptionIndex, setScaleOptionIndex] = useState(defaultScaleIndex);
@@ -90,8 +92,8 @@ const DraggableBox = memo(
 			};
 		}, [app.stage, app.screen, onEnd]);
 
-
 		function onRightClick(e) {
+			console.log('right click');
 			setScaleOptionIndex((prev) => (prev + 1) % scaleOptions.length);
 		}
 
@@ -102,21 +104,29 @@ const DraggableBox = memo(
 			}
 		}
 
+		const editModeProps = {
+			pointerdown: onStart,
+			pointerup: onEnd,
+			pointerupoutside: onEnd,
+			click: handleClick,
+			rightclick: onRightClick,
+		};
+
+		const viewModeProps = {};
+
 		return (
 			<Sprite
+				renderable={true}
 				alpha={alpha}
 				position={position}
 				texture={texture}
 				zIndex={zIndex}
 				eventMode="static"
-				pointerdown={onStart}
-				pointerup={onEnd}
-				pointerupoutside={onEnd}
 				rotation={rotation}
-				click={handleClick}
-				onrightclick={onRightClick}
+				
 				anchor={{ x: 0.5, y: 0.5 }}
 				scale={scaleOptions[scaleOptionIndex]}
+				{...(isEditMode ? editModeProps : viewModeProps)}
 				{...props}
 			/>
 		);
