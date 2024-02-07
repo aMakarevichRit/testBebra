@@ -1,16 +1,17 @@
 // eslint-disable-next-line
 // @ts-ignore
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Stage, Container, Graphics, useApp } from '@pixi/react';
-import { Texture, Sprite as PIXISprite, RoundedRectangle } from 'pixi.js';
+import { useCallback, useState } from 'react';
+import { Stage, Container, Sprite } from '@pixi/react';
+import { Texture } from 'pixi.js';
 import tableSmall from './assets/table2.png';
 import table3 from './assets/table3.png';
 import table4 from './assets/table4.png';
 import seat from './assets/seat-v4.png';
 import ErrorBoundary from './ErrorBoundary';
 import DraggableBox from './DraggableBox';
-import Rectangle from './Rectangle';
-import DraggableBox2 from './DraggableBox2';
+import { useKeyboard } from './hooks/useKeyboard';
+import { useCopy } from './hooks/useCopy';
+import { useWheel } from './hooks/useWheel';
 
 const idToTextureMap = {
 	table: tableSmall,
@@ -20,155 +21,110 @@ const idToTextureMap = {
 };
 
 const saveStateToJson = (objects) => {
-	const state = objects.map(({ id, sprite: obj }) => {
-		return {
-			id,
-			x: obj.x,
-			y: obj.y,
-			rotation: obj.rotation,
-			scaleIndex: obj.scaleIndex,
-			textureSource: obj.texture.textureCacheIds[0], // Assuming only one texture per sprite
-		};
-	});
-	return JSON.stringify(state, null, 2);
+	return JSON.stringify(objects, null, 2);
 };
 
 const loadStateFromJson = (jsonString) => {
 	const state = JSON.parse(jsonString);
-	const loadedObjects = state.map(({ x, y, rotation, scaleIndex, textureSource, id }) => {
-		const texture = Texture.from(textureSource);
-		const sprite = new PIXISprite(texture);
-		sprite.x = x;
-		sprite.y = y;
-		sprite.rotation = rotation;
-		sprite.scaleIndex = scaleIndex;
-		return { id, sprite };
-	});
-	// const loadedRefObjects = state.map(({ x, y, rotation, textureSource }) => {
-	// 	const texture = Texture.from(textureSource);
-	// 	const sprite = <Sprite texture={texture} x={x} y={y} rotation={rotation} />;
-	// 	return sprite;
-	// });
-	return loadedObjects;
-	// setRefObjects(loadedRefObjects);
+	return state;
 };
 
+const defaultObjects = [
+	{
+		id: '1',
+		position: { x: 100, y: 100 },
+		rotation: 0,
+		scale: { x: 1, y: 1 },
+		textureSrc: table4,
+		zIndex: 10,
+	},
+	{
+		id: '2',
+		position: { x: 200, y: 100 },
+		rotation: 0,
+		scale: { x: 1, y: 1 },
+		textureSrc: seat,
+		zIndex: 10,
+	},
+];
+
 const Editor = () => {
-	const [objects, setObjects] = useState([]);
-	const [json, setJson] = useState('');
-	const [selected, setSelected] = useState({});
+	const [objects, setObjects] = useState(defaultObjects);
+	const [selectedItems, setSelectedItems] = useState({});
 	const [isEditMode, setIsEditMode] = useState(true);
+
+	const { handleCopy, handlePaste } = useCopy(selectedItems, onPaste);
+
+	useKeyboard(isEditMode, handleKeyDown);
+	useWheel(isEditMode, handleResize);
 	// const [refObjects, setRefObjects] = useState([]);
 	const [savedState, setSavedState] = useState('');
-	useEffect(() => {
-		const table = new PIXISprite(Texture.from(tableSmall));
-		table.position = { x: 100, y: 100 };
-		table.rotation = 0;
-		table.scaleIndex = 0;
 
-		const chair = new PIXISprite(Texture.from(seat));
-		chair.position = { x: 200, y: 100 };
-		chair.rotation = 0;
-		chair.scaleIndex = 0;
-
-		setObjects([
-			{ id: '1', sprite: table },
-			{ id: '2', sprite: chair },
-		]);
-		// setRefObjects([
-		// 	<Sprite texture={Texture.from(tableSmall)} />,
-		// 	<Sprite texture={Texture.from(chairSmall)} />,
-		// ]);
-	}, []);
-
-	const handleCopy = useCallback(() => {
-		navigator.clipboard
-			.writeText(JSON.stringify(selected))
-			.then(() => {
-				console.log('Data copied to clipboard:', selected);
-			})
-			.catch((error) => {
-				console.error('Error copying data:', error);
-			});
-	}, [selected]);
-
-	const handlePaste = useCallback(() => {
-		navigator.clipboard
-			.readText()
-			.then((text) => {
-				try {
-					const parsedData = JSON.parse(text);
-					debugger;
-					setObjects((prevObjects) => {
-						debugger;
-						return [
-							...prevObjects,
-							...Object.keys(parsedData).map((id) => ({
-								...prevObjects.filter((obj) => obj.id === id)[0],
-								id: id + Math.random(),
-							})),
-						];
-					});
-					console.log('Data pasted from clipboard:', parsedData);
-				} catch (error) {
-					console.error('Error parsing pasted data:', error);
-				}
-			})
-			.catch((error) => {
-				console.error('Error pasting data:', error);
-			});
-	}, []);
-
-	useEffect(() => {
-		if (isEditMode) {
-			const handleKeyDown = (event) => {
-				if (event.key === 'Delete') {
-					const updatetObjects = objects.filter((obj) => !selected[obj.id]);
-					setObjects(updatetObjects);
-				}
-
-				if (event.ctrlKey && event.key === 'c') {
-					handleCopy();
-				} else if (event.ctrlKey && event.key === 'v') {
-					handlePaste();
-				}
-			};
-
-			document.addEventListener('keydown', handleKeyDown);
-
-			return () => {
-				document.removeEventListener('keydown', handleKeyDown);
-			};
-		}
-	}, [objects, selected, isEditMode, handleCopy, handlePaste]);
-
-	const handleDragEnd = useCallback((newState, index) => {
+	function onPaste(parsedData) {
 		setObjects((prevObjects) => {
-			const updatedObjects = prevObjects.map(({ id, sprite: obj }, i) => {
-				const updatedSprite = new PIXISprite(Texture.from(obj.texture.textureCacheIds[0]));
+			return [
+				...prevObjects,
+				...Object.keys(parsedData).map((id) => ({
+					...prevObjects.filter((obj) => obj.id === id)[0],
+					id: id + Math.random(),
+				})),
+			];
+		});
+	}
 
-				if (i === index) {
-					updatedSprite.position = newState.position;
-					updatedSprite.rotation = newState.rotation;
-					updatedSprite.scaleIndex = newState.scaleIndex;
-				} else {
-					updatedSprite.position = obj.position;
-					updatedSprite.rotation = obj.rotation;
-					updatedSprite.scaleIndex = obj.scaleIndex;
+	function handleKeyDown(event) {
+		if (event.key === 'Delete') {
+			const updatetObjects = objects.filter((obj) => !selectedItems[obj.id]);
+			setObjects(updatetObjects);
+		}
+
+		if (event.key === 'r' || event.key === 'R') {
+			const updatedObjects = objects.map((obj) => {
+				if (!selectedItems[obj.id]) {
+					return obj;
 				}
 
-				return {
-					id,
-					sprite: updatedSprite,
-				};
+				const prevRotation = obj.rotation ?? 0;
+				const updatedRotation = prevRotation + Math.PI / 2;
+
+				return { ...obj, rotation: updatedRotation };
 			});
-			return updatedObjects;
-		});
-	}, []);
+
+			setObjects(updatedObjects);
+		}
+
+		if (event.ctrlKey && event.key === 'c') {
+			handleCopy();
+		} else if (event.ctrlKey && event.key === 'v') {
+			handlePaste();
+		}
+	}
+
+	function handleResize(event: WheelEvent) {
+		event.stopPropagation();
+		if (Object.keys(selectedItems).length !== 0) {
+			const scaleFactor = event.deltaY > 0 ? 0.9 : 1.1; // Scale factor based on mouse wheel direction
+
+			const updatedObjects = objects.map((obj) => {
+				if (!selectedItems[obj.id]) {
+					return obj;
+				}
+
+				const prevScale = obj.scale ?? 0;
+				const updatedScale = {
+					x: prevScale.x * scaleFactor,
+					y: prevScale.y * scaleFactor,
+				};
+
+				return { ...obj, scale: updatedScale };
+			});
+
+			setObjects(updatedObjects);
+		}
+	}
 
 	const onSaveState = useCallback(() => {
 		const savedState = saveStateToJson(objects);
-		setJson(savedState);
 		setSavedState(savedState);
 	}, [objects]);
 
@@ -180,48 +136,49 @@ const Editor = () => {
 		}, 100);
 	}, [savedState]);
 
-	console.log('rerender editor');
-	const boxes = objects.map(({ id, sprite: obj }, index) => {
+	const boxes = objects.map(({ id, position, scale, rotation, textureSrc, zIndex }) => {
+		debugger;
 		function handleTap(e) {
-			const updateSelected = { ...selected };
+			const updateSelected = { ...selectedItems };
 			if (updateSelected[id]) {
 				delete updateSelected[id];
 			} else {
 				updateSelected[id] = id;
 			}
-			setSelected(updateSelected);
+			setSelectedItems(updateSelected);
 		}
-		console.log('selected', selected);
+
 		return (
 			<DraggableBox
 				key={id}
-				texture={obj.texture}
-				x={obj.position.x}
-				y={obj.position.y}
-				rotation={obj.rotation}
-				scaleIndex={obj.scaleIndex}
-				onDragEnd={isEditMode ? (newState) => handleDragEnd(newState, index) : null}
+				texture={Texture.from(textureSrc)}
+				position={position}
+				rotation={rotation}
+				scale={scale}
 				cursor="pointer"
 				pointertap={handleTap}
 				isEditMode={isEditMode}
-				tint={selected[id] ? '#F43F5E' : 0xffffff}
+				zIndex={zIndex}
+				tint={selectedItems[id] ? '#F43F5E' : 0xffffff}
 			/>
 		);
 	});
 
 	const onAddObject = useCallback((type) => {
-		const sprite = new PIXISprite(Texture.from(idToTextureMap[type]));
-		sprite.width = 400;
-		sprite.height = 400;
-		sprite.position = { x: 100, y: 100 };
-		sprite.rotation = 0;
-		sprite.scaleIndex = 0;
-
 		setObjects((prevObjects) => [
 			...prevObjects,
-			{ id: (prevObjects.length + 1).toString(), sprite },
+			{
+				id: (prevObjects.length + 1).toString(),
+				position: { x: 100, y: 100 },
+				textureSrc: idToTextureMap[type],
+				rotation: 0,
+				scale: { x: 1, y: 1 },
+				zIndex: 10,
+			},
 		]);
 	}, []);
+
+	console.log('rerender of editor');
 
 	return (
 		<div
@@ -247,20 +204,17 @@ const Editor = () => {
 				}}
 			>
 				<Stage
-					options={{
-						backgroundColor: 0x1d2330,
-					}}
+					options={{ backgroundColor: 0xffffff }}
 					raf={false}
 					onContextMenu={(e) => e.preventDefault()}
 					onPointerDown={(e) => e.preventDefault()}
 					renderOnComponentChange={true}
 					width={1100}
 					height={780}
+					style={{ border: '1px dashed black' }}
 				>
-					<Container sortableChildren={true} eventMode="static">
+					<Container sortableChildren={true} width={1100} height={780}>
 						{boxes}
-						{/* <ResizableBox texture={Texture.from(table3)} x={300} y={300} /> */}
-						{/* <ResizableBox texture={Texture.from(chairSmall)} x={400} y={300} /> */}
 					</Container>
 				</Stage>
 
@@ -279,7 +233,9 @@ const Editor = () => {
 					</div>
 				</div>
 			</div>
-			<pre style={{ maxHeight: '600px', height: '100%' }}>{json}</pre>
+			<pre style={{ maxHeight: '600px', height: '100%' }}>
+				{JSON.stringify(objects, null, 2)}
+			</pre>
 		</div>
 	);
 };
