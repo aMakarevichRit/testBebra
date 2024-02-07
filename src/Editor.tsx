@@ -58,7 +58,7 @@ const Editor = () => {
 	const [json, setJson] = useState('');
 	const [selected, setSelected] = useState({});
 	const [isEditMode, setIsEditMode] = useState(false);
-
+	console.log('test')
 	// const [refObjects, setRefObjects] = useState([]);
 	const [savedState, setSavedState] = useState('');
 	useEffect(() => {
