@@ -1,7 +1,7 @@
 // eslint-disable-next-line
 // @ts-ignore
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Stage, Container, Graphics } from '@pixi/react';
+import { Stage, Container, Graphics, useApp } from '@pixi/react';
 import { Texture, Sprite as PIXISprite, RoundedRectangle } from 'pixi.js';
 import tableSmall from './assets/table2.png';
 import table3 from './assets/table3.png';
@@ -9,6 +9,7 @@ import seat from './assets/seat-v4.png';
 import ErrorBoundary from './ErrorBoundary';
 import DraggableBox from './DraggableBox';
 import Rectangle from './Rectangle';
+import DraggableBox2 from './DraggableBox2';
 
 const idToTextureMap = {
 	table: tableSmall,
@@ -130,6 +131,7 @@ const Editor = () => {
 				scaleIndex={obj.scaleIndex}
 				scale={{ x: 0.3, y: 0.3 }}
 				onDragEnd={(newState) => handleDragEnd(newState, index)}
+				cursor="pointer"
 			/>
 		);
 	});
@@ -177,10 +179,13 @@ const Editor = () => {
 					width={1100}
 					height={780}
 				>
-					<Container ref={appRef} sortableChildren={true}>
+					<Container sortableChildren={true} eventMode="static">
 						{boxes}
 						{/* <ResizableBox texture={Texture.from(table3)} x={300} y={300} /> */}
 						{/* <ResizableBox texture={Texture.from(chairSmall)} x={400} y={300} /> */}
+						<DraggableBox2 />
+						<DraggableBox2 />
+						<DraggableBox2 />
 					</Container>
 				</Stage>
 
