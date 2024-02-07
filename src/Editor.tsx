@@ -5,6 +5,7 @@ import { Stage, Container, Graphics, useApp } from '@pixi/react';
 import { Texture, Sprite as PIXISprite, RoundedRectangle } from 'pixi.js';
 import tableSmall from './assets/table2.png';
 import table3 from './assets/table3.png';
+import table4 from './assets/table4.png';
 import seat from './assets/seat-v4.png';
 import ErrorBoundary from './ErrorBoundary';
 import DraggableBox from './DraggableBox';
@@ -14,11 +15,11 @@ import DraggableBox2 from './DraggableBox2';
 const idToTextureMap = {
 	table: tableSmall,
 	table3: table3,
+	table4: table4,
 	seat: seat,
 };
 
 const saveStateToJson = (objects) => {
-	debugger;
 	const state = objects.map(({ id, sprite: obj }) => {
 		return {
 			id,
@@ -55,10 +56,11 @@ const loadStateFromJson = (jsonString) => {
 const Editor = () => {
 	const [objects, setObjects] = useState([]);
 	const [json, setJson] = useState('');
+	const [selected, setSelected] = useState({});
+	const [isEditMode, setIsEditMode] = useState(false);
 
 	// const [refObjects, setRefObjects] = useState([]);
 	const [savedState, setSavedState] = useState('');
-	const appRef = useRef(null);
 	useEffect(() => {
 		const table = new PIXISprite(Texture.from(tableSmall));
 		table.position = { x: 100, y: 100 };
@@ -80,10 +82,25 @@ const Editor = () => {
 		// ]);
 	}, []);
 
+	useEffect(() => {
+		const handleKeyDown = (event) => {
+			if (event.key === 'Delete') {
+				debugger;
+				const updatetObjects = objects.filter((obj) => !selected[obj.id]);
+				setObjects(updatetObjects);
+			}
+		};
+
+		document.addEventListener('keydown', handleKeyDown);
+
+		return () => {
+			document.removeEventListener('keydown', handleKeyDown);
+		};
+	}, [objects, selected]);
+
 	const handleDragEnd = useCallback((newState, index) => {
 		setObjects((prevObjects) => {
 			const updatedObjects = prevObjects.map(({ id, sprite: obj }, i) => {
-				debugger;
 				const updatedSprite = new PIXISprite(Texture.from(obj.texture.textureCacheIds[0]));
 
 				if (i === index) {
@@ -120,7 +137,16 @@ const Editor = () => {
 	}, [savedState]);
 
 	const boxes = objects.map(({ id, sprite: obj }, index) => {
-		debugger;
+		function handleTap(e) {
+			const updateSelected = { ...selected };
+			if (updateSelected[id]) {
+				delete updateSelected[id];
+			} else {
+				updateSelected[id] = id;
+			}
+			setSelected(updateSelected);
+		}
+		console.log('selected', selected);
 		return (
 			<DraggableBox
 				key={id}
@@ -129,9 +155,10 @@ const Editor = () => {
 				y={obj.position.y}
 				rotation={obj.rotation}
 				scaleIndex={obj.scaleIndex}
-				scale={{ x: 0.3, y: 0.3 }}
 				onDragEnd={(newState) => handleDragEnd(newState, index)}
 				cursor="pointer"
+				pointertap={handleTap}
+				tint={selected[id] ? '#F43F5E' : 0xffffff}
 			/>
 		);
 	});
@@ -183,9 +210,6 @@ const Editor = () => {
 						{boxes}
 						{/* <ResizableBox texture={Texture.from(table3)} x={300} y={300} /> */}
 						{/* <ResizableBox texture={Texture.from(chairSmall)} x={400} y={300} /> */}
-						<DraggableBox2 />
-						<DraggableBox2 />
-						<DraggableBox2 />
 					</Container>
 				</Stage>
 
@@ -195,8 +219,8 @@ const Editor = () => {
 						<button onClick={() => onAddObject('table')}>Add table</button>
 					</div>
 					<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-						<img src={table3} width={120} height={120} />
-						<button onClick={() => onAddObject('table3')}>Add table</button>
+						<img src={table4} width={120} height={120} />
+						<button onClick={() => onAddObject('table4')}>Add table</button>
 					</div>
 					<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 						<img src={seat} width={120} height={120} />

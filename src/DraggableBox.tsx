@@ -1,13 +1,7 @@
-import { Sprite } from '@pixi/react';
-import { memo, useCallback, useRef, useState } from 'react';
+import { Sprite, useApp } from '@pixi/react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 
-const scaleOptions = [
-	{ x: 1, y: 1 },
-	{ x: 1.25, y: 1.25 },
-	{ x: 1.5, y: 1.5 },
-	{ x: 2, y: 2 },
-	{ x: 3, y: 3 },
-];
+const scaleOptions = [0.1, 0.2, 0.3, 0.4];
 
 const DraggableBox = memo(
 	({
@@ -19,21 +13,28 @@ const DraggableBox = memo(
 		texture,
 		...props
 	}) => {
+		const app = useApp();
 		const isDragging = useRef(false);
 		const isClicking = useRef(false);
-		const offset = useRef({ x: 0, y: 0, shiftX: 0, shiftY: 0 });
+		const offset = useRef({ shiftX: 0, shiftY: 0 });
 		const [position, setPosition] = useState({ x: x || 0, y: y || 0 });
 		const [alpha, setAlpha] = useState(1);
 		const [zIndex, setZIndex] = useState(10);
 		const [rotation, setRotation] = useState(defaultRotation);
+		const dropTarget = useRef(null);
 		const [scaleOptionIndex, setScaleOptionIndex] = useState(defaultScaleIndex);
-		const onMove = useCallback(
+		const onDragMove = useCallback(
 			(e) => {
-				if (isDragging.current) {
+				if (isDragging.current && dropTarget.current) {
 					isClicking.current = false; // It's a drag, not a click
+					const updatedPosition = dropTarget.current.parent.toLocal(
+						e.global,
+						null,
+						dropTarget.current.position
+					);
 					setPosition({
-						x: e.clientX - offset.current.x - offset.current.shiftX,
-						y: e.clientY - offset.current.y - offset.current.shiftY,
+						x: updatedPosition.x - offset.current.shiftX,
+						y: updatedPosition.y - offset.current.shiftY,
 					});
 				}
 			},
@@ -44,27 +45,26 @@ const DraggableBox = memo(
 			(e) => {
 				isDragging.current = true;
 				isClicking.current = true;
-				debugger;
 				offset.current = {
-					x: e.originalEvent.clientX - e.data.global.x,
-					y: e.originalEvent.clientY - e.data.global.y,
 					shiftX: e.data.global.x - position.x,
 					shiftY: e.data.global.y - position.y,
 				};
-
+				dropTarget.current = e.currentTarget;
 				setAlpha(0.5);
 				setZIndex((prevIndex) => prevIndex + 1);
-				document.addEventListener('pointermove', onMove);
+				app.stage.on('pointermove', onDragMove);
 			},
-			[onMove, position]
+			[onDragMove, position, app.stage]
 		);
 
 		const onEnd = useCallback(
 			(e) => {
-				if (e.target === e.currentTarget) {
+				if (e.target === e.currentTarget && dropTarget.current) {
 					isDragging.current = false;
 					setAlpha(1);
-					document.removeEventListener('pointermove', onMove);
+					app.stage.off('pointermove', onDragMove);
+					dropTarget.current = null;
+
 					if (onDragEnd) {
 						onDragEnd({
 							position: position,
@@ -75,8 +75,21 @@ const DraggableBox = memo(
 				}
 			},
 
-			[onDragEnd, rotation, scaleOptionIndex, position, onMove]
+			[onDragEnd, rotation, scaleOptionIndex, position, onDragMove, app.stage]
 		);
+
+		useEffect(() => {
+			app.stage.eventMode = 'static';
+			app.stage.hitArea = app.screen;
+			app.stage.on('pointerup', onEnd);
+			app.stage.on('pointerupoutside', onEnd);
+
+			return () => {
+				app.stage.off('pointerup', onEnd);
+				app.stage.off('pointerupoutside', onEnd);
+			};
+		}, [app.stage, app.screen, onEnd]);
+
 
 		function onRightClick(e) {
 			setScaleOptionIndex((prev) => (prev + 1) % scaleOptions.length);
