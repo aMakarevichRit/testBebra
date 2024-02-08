@@ -1,9 +1,9 @@
 import { Sprite } from '@pixi/react';
-import { memo } from 'react';
 import { useDragging } from './hooks/useDragging';
+import { memo } from 'react';
 
-const DraggableBox = ({ position: defaultPosition, isEditMode, ...props }) => {
-	const { alpha, zIndex, position, onDragEnd, onDragStart } = useDragging(defaultPosition);
+const DraggableBox = memo(({ isEditMode, updateSelectedItems, updateItemState, id, ...props }) => {
+
 
 	const editModeProps = {
 		pointerdown: onDragStart,
@@ -15,15 +15,13 @@ const DraggableBox = ({ position: defaultPosition, isEditMode, ...props }) => {
 
 	return (
 		<Sprite
-			alpha={alpha}
 			position={position}
 			eventMode="static"
-			zIndex={zIndex}
 			anchor={{ x: 0.5, y: 0.5 }}
+			
 			{...(isEditMode ? editModeProps : viewModeProps)}
 			{...props}
 		/>
 	);
-};
-
+});
 export default DraggableBox;

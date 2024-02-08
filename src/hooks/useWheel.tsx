@@ -6,7 +6,7 @@ const useWheel = (isEditMode, handleResize) => {
 			return;
 		}
 
-		document.addEventListener('wheel', handleResize);
+		document.addEventListener('wheel', handleResize, { passive: false });
 
 		return () => {
 			document.removeEventListener('wheel', handleResize);

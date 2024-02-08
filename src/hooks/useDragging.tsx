@@ -1,13 +1,10 @@
 import { useApp } from '@pixi/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const useDragging = (defaultPosition) => {
+const useDragging = (updateItem) => {
 	const app = useApp();
 	const offset = useRef({ shiftX: 0, shiftY: 0 });
-	const [position, setPosition] = useState({
-		x: defaultPosition.x || 0,
-		y: defaultPosition.y || 0,
-	});
+	const [position, setPosition] = useState({ x: 100, y: 100 });
 	const [alpha, setAlpha] = useState(1);
 	const [zIndex, setZIndex] = useState(10);
 	const dropTarget = useRef(null);
@@ -23,13 +20,15 @@ const useDragging = (defaultPosition) => {
 					null,
 					dropTarget.current.position
 				);
-				setPosition({
-					x: updatedPosition.x - offset.current.shiftX,
-					y: updatedPosition.y - offset.current.shiftY,
+				updateItem({
+					position: {
+						x: updatedPosition.x - offset.current.shiftX,
+						y: updatedPosition.y - offset.current.shiftY,
+					},
 				});
 			}
 		},
-		[setPosition]
+		[updateItem]
 	);
 
 	const onDragEnd = useCallback(
@@ -38,11 +37,14 @@ const useDragging = (defaultPosition) => {
 				isDragging.current = false;
 				setAlpha(1);
 				app.stage.off('pointermove', onDragMove);
+				updateItem({
+					alpha,
+					zIndex,
+				});
 				dropTarget.current = null;
 			}
 		},
-
-		[onDragMove, app.stage]
+		[app.stage, onDragMove, updateItem, zIndex, alpha]
 	);
 
 	useEffect(() => {
@@ -68,9 +70,13 @@ const useDragging = (defaultPosition) => {
 			dropTarget.current = e.currentTarget;
 			setAlpha(0.5);
 			setZIndex((prevIndex) => prevIndex + 1);
+			updateItem({
+				alpha,
+				zIndex,
+			});
 			app.stage.on('pointermove', onDragMove);
 		},
-		[onDragMove, position, app.stage]
+		[position, app.stage, onDragMove, alpha, zIndex, updateItem]
 	);
 
 	return {
@@ -80,6 +86,7 @@ const useDragging = (defaultPosition) => {
 		position,
 		alpha,
 		zIndex,
+		isClicking: isClicking.current,
 	};
 };
 

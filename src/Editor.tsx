@@ -1,7 +1,7 @@
 // eslint-disable-next-line
 // @ts-ignore
-import { useCallback, useState } from 'react';
-import { Stage, Container, Sprite } from '@pixi/react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Stage, Container } from '@pixi/react';
 import { Texture } from 'pixi.js';
 import tableSmall from './assets/table2.png';
 import table3 from './assets/table3.png';
@@ -12,6 +12,7 @@ import DraggableBox from './DraggableBox';
 import { useKeyboard } from './hooks/useKeyboard';
 import { useCopy } from './hooks/useCopy';
 import { useWheel } from './hooks/useWheel';
+import { useAreaSelection } from './hooks/useAreaSelection';
 
 const idToTextureMap = {
 	table: tableSmall,
@@ -34,7 +35,7 @@ const defaultObjects = [
 		id: '1',
 		position: { x: 100, y: 100 },
 		rotation: 0,
-		scale: { x: 1, y: 1 },
+		scale: { x: 0.2, y: 0.2 },
 		textureSrc: table4,
 		zIndex: 10,
 	},
@@ -42,7 +43,7 @@ const defaultObjects = [
 		id: '2',
 		position: { x: 200, y: 100 },
 		rotation: 0,
-		scale: { x: 1, y: 1 },
+		scale: { x: 0.2, y: 0.2 },
 		textureSrc: seat,
 		zIndex: 10,
 	},
@@ -51,12 +52,23 @@ const defaultObjects = [
 const Editor = () => {
 	const [objects, setObjects] = useState(defaultObjects);
 	const [selectedItems, setSelectedItems] = useState({});
+	const stageRef = useRef(null);
 	const [isEditMode, setIsEditMode] = useState(true);
 
 	const { handleCopy, handlePaste } = useCopy(selectedItems, onPaste);
-
+	// const {
+	// 	handleMouseDown,
+	// 	handleMouseMove,
+	// 	handleMouseUp,
+	// 	selectedItems: areaItems,
+	// } = useAreaSelection(stageRef);
 	useKeyboard(isEditMode, handleKeyDown);
 	useWheel(isEditMode, handleResize);
+
+	// useEffect(() => {
+	// 	console.log(areaItems);
+	// }, [areaItems]);
+
 	// const [refObjects, setRefObjects] = useState([]);
 	const [savedState, setSavedState] = useState('');
 
@@ -73,35 +85,76 @@ const Editor = () => {
 	}
 
 	function handleKeyDown(event) {
-		if (event.key === 'Delete') {
-			const updatetObjects = objects.filter((obj) => !selectedItems[obj.id]);
-			setObjects(updatetObjects);
+		event.preventDefault();
+		let updatedObjects = null;
+		let shiftPosition = null;
+		switch (event.key) {
+			case 'Delete':
+				updatedObjects = objects.filter((obj) => !selectedItems[obj.id]);
+				setSelectedItems({});
+				break;
+			case 'r' || 'R':
+				updatedObjects = objects.map((obj) => {
+					if (!selectedItems[obj.id]) {
+						return obj;
+					}
+
+					const prevRotation = obj.rotation ?? 0;
+					const updatedRotation = prevRotation + Math.PI / 2;
+
+					return { ...obj, rotation: updatedRotation };
+				});
+
+				break;
+			case event.key === 'c' && event.ctrlKey:
+				handleCopy();
+				return;
+			case event.key === 'v' && event.ctrlKey:
+				handlePaste();
+				return;
+			case 'ArrowUp':
+				shiftPosition = { x: 0, y: -20 };
+				break;
+			case 'ArrowDown':
+				shiftPosition = { x: 0, y: 20 };
+				break;
+			case 'ArrowLeft':
+				shiftPosition = { x: -20, y: 0 };
+				break;
+			case 'ArrowRight':
+				shiftPosition = { x: 20, y: 0 };
+				break;
+			default:
+				break;
 		}
 
-		if (event.key === 'r' || event.key === 'R') {
-			const updatedObjects = objects.map((obj) => {
+		if (shiftPosition) {
+			console.log(shiftPosition);
+			updatedObjects = objects.map((obj) => {
 				if (!selectedItems[obj.id]) {
 					return obj;
 				}
 
-				const prevRotation = obj.rotation ?? 0;
-				const updatedRotation = prevRotation + Math.PI / 2;
+				const updatedPosition = {
+					x: obj.position.x + shiftPosition.x,
+					y: obj.position.y + shiftPosition.y,
+				};
 
-				return { ...obj, rotation: updatedRotation };
+				return { ...obj, position: updatedPosition };
 			});
-
-			setObjects(updatedObjects);
 		}
 
-		if (event.ctrlKey && event.key === 'c') {
-			handleCopy();
-		} else if (event.ctrlKey && event.key === 'v') {
-			handlePaste();
+		if (updatedObjects) {
+			setObjects(updatedObjects);
 		}
 	}
 
-	function handleResize(event: WheelEvent) {
-		event.stopPropagation();
+	function handleResize(event) {
+		if (!isEditMode) {
+			return;
+		}
+		event.preventDefault();
+
 		if (Object.keys(selectedItems).length !== 0) {
 			const scaleFactor = event.deltaY > 0 ? 0.9 : 1.1; // Scale factor based on mouse wheel direction
 
@@ -129,34 +182,60 @@ const Editor = () => {
 	}, [objects]);
 
 	const onLoadState = useCallback(() => {
-		setObjects([]);
-		setTimeout(() => {
-			const loadedObjects = loadStateFromJson(savedState);
-			setObjects(loadedObjects);
-		}, 100);
+		const loadedObjects = loadStateFromJson(savedState);
+		setObjects(loadedObjects);
 	}, [savedState]);
 
-	const boxes = objects.map(({ id, position, scale, rotation, textureSrc, zIndex }) => {
+	const updateSelectedItems = (id) => {
+		const updateSelected = { ...selectedItems };
+		if (updateSelected[id]) {
+			delete updateSelected[id];
+		} else {
+			updateSelected[id] = id;
+		}
+		setSelectedItems(updateSelected);
+	};
+
+	const updateItemState = (updatedState, id) => {
 		debugger;
-		function handleTap(e) {
-			const updateSelected = { ...selectedItems };
-			if (updateSelected[id]) {
-				delete updateSelected[id];
-			} else {
-				updateSelected[id] = id;
+		console.log('updated state', updatedState, updatedState.position);
+		const updatedObjects = objects.map((obj) => {
+			if (obj.id !== id) {
+				return obj;
 			}
-			setSelectedItems(updateSelected);
+
+			return { ...obj, ...updatedState };
+		});
+
+		setObjects(updatedObjects);
+	};
+
+	const boxes = objects.map(({ id, position, scale, rotation, textureSrc, zIndex }) => {
+		const { onDragEnd, onDragStart, isClicking, position } = useDragging(
+			props.position,
+			(updatedState) => updateItemState(updatedState, id))
+		);
+
+		function updateItem(updatedState) {
+			updateItemState(updatedState, id);
+		}
+
+		function onPointerTap() {
+			if (isClicking) {
+				updateSelectedItems(id);
+			}
 		}
 
 		return (
 			<DraggableBox
 				key={id}
+				id={id}
 				texture={Texture.from(textureSrc)}
 				position={position}
 				rotation={rotation}
+				pointertap={onPointerTap}
 				scale={scale}
 				cursor="pointer"
-				pointertap={handleTap}
 				isEditMode={isEditMode}
 				zIndex={zIndex}
 				tint={selectedItems[id] ? '#F43F5E' : 0xffffff}
@@ -172,7 +251,7 @@ const Editor = () => {
 				position: { x: 100, y: 100 },
 				textureSrc: idToTextureMap[type],
 				rotation: 0,
-				scale: { x: 1, y: 1 },
+				scale: { x: 0.2, y: 0.2 },
 				zIndex: 10,
 			},
 		]);
@@ -205,15 +284,15 @@ const Editor = () => {
 			>
 				<Stage
 					options={{ backgroundColor: 0xffffff }}
-					raf={false}
 					onContextMenu={(e) => e.preventDefault()}
 					onPointerDown={(e) => e.preventDefault()}
+					raf={false}
 					renderOnComponentChange={true}
 					width={1100}
 					height={780}
 					style={{ border: '1px dashed black' }}
 				>
-					<Container sortableChildren={true} width={1100} height={780}>
+					<Container sortableChildren={true} eventMode="static">
 						{boxes}
 					</Container>
 				</Stage>
