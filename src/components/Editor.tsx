@@ -17,6 +17,7 @@ import { useDragging } from '../hooks/useDragging';
 import Grid from './Grid';
 import TestStage from './TestStage';
 import SelectionRectangle from './SelectionRectangle';
+import { AreaSelectionProvider } from './AreaSelectionContext';
 
 const idToTextureMap = {
 	table: tableSmall,
@@ -65,15 +66,12 @@ const Editor = () => {
 		globalThis.__PIXI_APP__ = app;
 	}, [app]);
 	const { handleCopy, handlePaste } = useCopy(selectedItems, onPaste);
+
 	const {
 		handleMouseDown,
 		handleMouseUp,
-		handleMouseTap,
 		selectedItems: areaItems,
-		startPoint,
-		endPoint,
 	} = useAreaSelection(app?.stage);
-
 	useKeyboard(isEditMode, handleKeyDown);
 	useWheel(isEditMode, handleResize);
 
@@ -314,61 +312,36 @@ const Editor = () => {
 					}}
 					onContextMenu={(e) => e.preventDefault()}
 					onPointerDown={(e) => {
+						// debugger;
+
+						console.log('pointer down');
 						e.preventDefault();
+						if (selectedItems.length === 0) {
+							return;
+						}
+
+						// console.log('pointer down of stage', e.currentTarget, e.target);
+
+						console.log('reset selected');
+						console.log(selectedItems.length);
+						setSelectedItems([]);
 					}}
-					// onPointerDown={(e) => {
-					// 	if (e.hasOwnProperty('data')) {
-					// 		debugger;
-					// 		handleMouseDown(e);
-					// 		// debugger;
-					// 		console.log('pointer down');
-					// 		e.preventDefault();
-					// 		if (selectedItems.length === 0) {
-					// 			return;
-					// 		}
-
-					// 		// console.log('pointer down of stage', e.currentTarget, e.target);
-
-					// 		console.log('reset selected');
-					// 		console.log(selectedItems.length);
-					// 		setSelectedItems([]);
-					// 	}
-					// }}
-					// onPointerUp={(e) => {
-					// 	handleMouseUp(e);
-					// }}
+					// onPointerUp={handleMouseUp}
 					width={1160}
 					height={760}
 					onMount={setApp}
 					style={{ border: '1px dashed black' }}
 				>
-					<SelectionRectangle
-						startPoint={startPoint}
-						endPoint={endPoint}
-						stage={app?.stage}
-					/>
 					<Grid
 						width={1160}
 						height={760}
 						pointerdown={(e) => {
-							debugger;
 							handleMouseDown(e);
-							// debugger;
-							console.log('pointer down');
-							e.preventDefault();
-							if (selectedItems.length === 0) {
-								return;
-							}
-
-							// console.log('pointer down of stage', e.currentTarget, e.target);
-
-							console.log('reset selected');
-							console.log(selectedItems.length);
-							setSelectedItems([]);
 						}}
-						pointertap={handleMouseTap}
 						pointerup={handleMouseUp}
+						pointerupoutside={handleMouseUp}
 					>
+						<SelectionRectangle />
 						{boxes}
 					</Grid>
 				</Stage>

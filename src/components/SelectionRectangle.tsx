@@ -1,21 +1,27 @@
-import { useState } from 'react';
-import { Graphics, useApp } from '@pixi/react';
-import { Point, Rectangle } from 'pixi.js';
-import { useAreaSelection } from '../hooks/useAreaSelection';
+import { useContext } from 'react';
+import { Graphics as GraphicsComponent, useApp } from '@pixi/react';
+import { Graphics, Point, Rectangle } from 'pixi.js';
+import { AreaSelectionContext } from './AreaSelectionContext';
 
-const SelectionRectangle = ({ stage, startPoint, endPoint, ...props }) => {
+const SelectionRectangle = () => {
 	const app = useApp();
-	const [graphics, setGraphics] = useState(null);
+	const {
+		coordinates: { startPoint, endPoint },
+	} = useContext(AreaSelectionContext);
 
-	const drawSelectionRectangle = (graphics) => {
-		if (!startPoint || !endPoint) {
+	console.log('startPoint', startPoint);
+	console.log('endPoint', endPoint);
+
+	const drawSelectionRectangle = (graphics: Graphics) => {
+		if (!startPoint || !endPoint || !app) {
 			graphics.clear();
 			return;
 		}
 
-		if (graphics && startPoint && endPoint && stage) {
-			const globalPos1 = app?.stage.toLocal(new Point(startPoint.x, startPoint.y), stage);
-			const globalPos2 = app?.stage.toLocal(new Point(endPoint.x, endPoint.y), stage);
+		const { stage } = app;
+		if (graphics && startPoint && endPoint) {
+			const globalPos1 = stage.toLocal(new Point(startPoint.x, startPoint.y), stage);
+			const globalPos2 = stage.toLocal(new Point(endPoint.x, endPoint.y), stage);
 
 			const selectionRect = new Rectangle(
 				Math.min(globalPos1.x, globalPos2.x),
@@ -35,15 +41,7 @@ const SelectionRectangle = ({ stage, startPoint, endPoint, ...props }) => {
 		}
 	};
 
-	return (
-		<Graphics
-			draw={(g) => {
-				setGraphics(g);
-				drawSelectionRectangle(g);
-			}}
-			zIndex={10000}
-		/>
-	);
+	return <GraphicsComponent draw={drawSelectionRectangle} zIndex={10000} />;
 };
 
 export default SelectionRectangle;
