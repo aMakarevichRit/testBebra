@@ -1,53 +1,47 @@
 import { useApp } from '@pixi/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const useDragging = (defaultPosition) => {
+const useDragging = (updateItem) => {
 	const app = useApp();
 	const offset = useRef({ shiftX: 0, shiftY: 0 });
-	const [position, setPosition] = useState({
-		x: defaultPosition.x || 0,
-		y: defaultPosition.y || 0,
-	});
-	const [alpha, setAlpha] = useState(1);
-	const [zIndex, setZIndex] = useState(10);
+	const [isClicking, setIsClicking] = useState(false);
 	const dropTarget = useRef(null);
 	const isDragging = useRef(false);
-	const isClicking = useRef(false);
 
-	const onDragMove = useCallback(
-		(e) => {
-			if (isDragging.current && dropTarget.current) {
-				isClicking.current = false; // It's a drag, not a click
-				const updatedPosition = dropTarget.current.parent.toLocal(
-					e.global,
-					null,
-					dropTarget.current.position
-				);
-				setPosition({
-					x: updatedPosition.x - offset.current.shiftX,
-					y: updatedPosition.y - offset.current.shiftY,
-				});
-			}
-		},
-		[setPosition]
-	);
+	const onDragMove = useCallback((e) => {
+		if (isDragging.current && dropTarget.current) {
+			debugger;
+			setIsClicking(false);
+			const local = dropTarget.current.parent.toLocal(e.global);
+			dropTarget.current.position = {
+				x: local.x - offset.current.shiftX,
+				y: local.y - offset.current.shiftY,
+			};
+		}
+	}, []);
 
 	const onDragEnd = useCallback(
 		(e) => {
-			if (e.target === e.currentTarget && dropTarget.current) {
+			if (dropTarget.current) {
 				isDragging.current = false;
-				setAlpha(1);
 				app.stage.off('pointermove', onDragMove);
+				const cellSize = 10;
+				const cellX = Math.round(dropTarget.current.x / cellSize);
+				const cellY = Math.round(dropTarget.current.y / cellSize);
+				updateItem({
+					position: {
+						x: cellX * cellSize,
+						y: cellY * cellSize,
+					},
+					alpha: 1,
+				});
 				dropTarget.current = null;
 			}
 		},
-
-		[onDragMove, app.stage]
+		[app.stage, onDragMove, updateItem]
 	);
 
 	useEffect(() => {
-		app.stage.eventMode = 'static';
-		app.stage.hitArea = app.screen;
 		app.stage.on('pointerup', onDragEnd);
 		app.stage.on('pointerupoutside', onDragEnd);
 
@@ -59,27 +53,29 @@ const useDragging = (defaultPosition) => {
 
 	const onDragStart = useCallback(
 		(e) => {
-			isDragging.current = true;
-			isClicking.current = true;
-			offset.current = {
-				shiftX: e.data.global.x - position.x,
-				shiftY: e.data.global.y - position.y,
-			};
-			dropTarget.current = e.currentTarget;
-			setAlpha(0.5);
-			setZIndex((prevIndex) => prevIndex + 1);
-			app.stage.on('pointermove', onDragMove);
+			debugger;
+			e.nativeEvent.stopImmediatePropagation();
+			// console.log('pointer down of item', e.currentTarget, e.target);
+			if (e.currentTarget) {
+				setIsClicking(true);
+				isDragging.current = true;
+				dropTarget.current = e.currentTarget;
+				offset.current = {
+					shiftX: e.data.global.x - dropTarget.current.x,
+					shiftY: e.data.global.y - dropTarget.current.y,
+				};
+				updateItem({ zIndex: dropTarget.current?.zIndex + 1, alpha: 0.5 });
+				app.stage.on('pointermove', onDragMove);
+			}
 		},
-		[onDragMove, position, app.stage]
+		[app.stage, onDragMove, updateItem]
 	);
 
 	return {
 		onDragStart,
 		onDragEnd,
 		onDragMove,
-		position,
-		alpha,
-		zIndex,
+		isClicking,
 	};
 };
 
