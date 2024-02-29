@@ -9,6 +9,7 @@ const useDragging = (updateItem) => {
 	const isDragging = useRef(false);
 
 	const onDragMove = useCallback((e) => {
+		console.log('drag moove');
 		if (isDragging.current && dropTarget.current) {
 			debugger;
 			setIsClicking(false);

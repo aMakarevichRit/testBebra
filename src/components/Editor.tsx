@@ -71,7 +71,8 @@ const Editor = () => {
 		handleMouseDown,
 		handleMouseUp,
 		selectedItems: areaItems,
-	} = useAreaSelection(app?.stage);
+		AreaSelectionComponent,
+	} = useAreaSelection(app?.stage, setSelectedItems);
 	useKeyboard(isEditMode, handleKeyDown);
 	useWheel(isEditMode, handleResize);
 
@@ -341,7 +342,7 @@ const Editor = () => {
 						pointerup={handleMouseUp}
 						pointerupoutside={handleMouseUp}
 					>
-						<SelectionRectangle />
+						<AreaSelectionComponent />
 						{boxes}
 					</Grid>
 				</Stage>

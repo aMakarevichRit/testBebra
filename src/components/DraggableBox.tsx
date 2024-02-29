@@ -25,6 +25,7 @@ const DraggableBox = memo(({ isEditMode, id, updateSelectedItems, updateItem, ..
 		<Sprite
 			eventMode="static"
 			anchor={0.5}
+			data-id={id}
 			{...(isEditMode ? editModeProps : viewModeProps)}
 			{...props}
 		/>

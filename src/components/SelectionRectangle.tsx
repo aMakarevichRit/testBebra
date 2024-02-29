@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useContext, useRef } from 'react';
 import { Graphics as GraphicsComponent, useApp } from '@pixi/react';
 import { Graphics, Point, Rectangle } from 'pixi.js';
 import { AreaSelectionContext } from './AreaSelectionContext';
@@ -8,6 +8,7 @@ const SelectionRectangle = () => {
 	const {
 		coordinates: { startPoint, endPoint },
 	} = useContext(AreaSelectionContext);
+	const graphicsRef = useRef<Graphics>(null);
 
 	console.log('startPoint', startPoint);
 	console.log('endPoint', endPoint);
@@ -41,7 +42,7 @@ const SelectionRectangle = () => {
 		}
 	};
 
-	return <GraphicsComponent draw={drawSelectionRectangle} zIndex={10000} />;
+	return <GraphicsComponent draw={drawSelectionRectangle} ref={graphicsRef} zIndex={10000} />;
 };
 
 export default SelectionRectangle;
