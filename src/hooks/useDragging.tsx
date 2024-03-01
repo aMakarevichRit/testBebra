@@ -1,7 +1,7 @@
 import { useApp } from '@pixi/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const useDragging = (updateItem) => {
+const useDragging = (updateItem, visibleArea) => {
 	const app = useApp();
 	const offset = useRef({ shiftX: 0, shiftY: 0 });
 	const [isClicking, setIsClicking] = useState(false);
@@ -9,6 +9,7 @@ const useDragging = (updateItem) => {
 	const isDragging = useRef(false);
 
 	const onDragMove = useCallback((e) => {
+		e.nativeEvent.stopImmediatePropagation();
 		console.log('drag moove');
 		if (isDragging.current && dropTarget.current) {
 			debugger;
@@ -54,22 +55,23 @@ const useDragging = (updateItem) => {
 
 	const onDragStart = useCallback(
 		(e) => {
-			debugger;
+			console.log('click on stage');
 			e.nativeEvent.stopImmediatePropagation();
 			// console.log('pointer down of item', e.currentTarget, e.target);
 			if (e.currentTarget) {
+				debugger;
 				setIsClicking(true);
 				isDragging.current = true;
 				dropTarget.current = e.currentTarget;
 				offset.current = {
-					shiftX: e.data.global.x - dropTarget.current.x,
-					shiftY: e.data.global.y - dropTarget.current.y,
+					shiftX: e.data.global.x + visibleArea.x - dropTarget.current?.x,
+					shiftY: e.data.global.y + visibleArea.y - dropTarget.current?.y,
 				};
 				updateItem({ zIndex: dropTarget.current?.zIndex + 1, alpha: 0.5 });
 				app.stage.on('pointermove', onDragMove);
 			}
 		},
-		[app.stage, onDragMove, updateItem]
+		[app.stage, onDragMove, updateItem, visibleArea]
 	);
 
 	return {

@@ -1,6 +1,6 @@
 // eslint-disable-next-line
 // @ts-ignore
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { MouseEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Stage, Container, Sprite } from '@pixi/react';
 import { Texture } from 'pixi.js';
 import tableSmall from '../assets/table2.png';
@@ -18,6 +18,11 @@ import Grid from './Grid';
 import TestStage from './TestStage';
 import SelectionRectangle from './SelectionRectangle';
 import { AreaSelectionProvider } from './AreaSelectionContext';
+import { useAreaDimensions } from '../hooks/useAreaDimensions';
+
+const stageWidth = 1600; // Width of the entire stage
+const stageHeight = 1600; // Height of the entire stage
+const visibleSquareSize = 800; // S
 
 const idToTextureMap = {
 	table: tableSmall,
@@ -61,6 +66,7 @@ const Editor = () => {
 	const [selectedItems, setSelectedItems] = useState([]);
 	const [isEditMode, setIsEditMode] = useState(true);
 	const [app, setApp] = useState();
+	const [visibleArea, setVisibleArea] = useState({ x: 0, y: 0, scale: 1 });
 
 	useEffect(() => {
 		globalThis.__PIXI_APP__ = app;
@@ -82,6 +88,29 @@ const Editor = () => {
 
 	// const [refObjects, setRefObjects] = useState([]);
 	const [savedState, setSavedState] = useState('');
+
+	const handleMouseMove = useCallback(
+		(event) => {
+			if (event.buttons === 1 && isEditMode) {
+				console.log('move ');
+
+				setVisibleArea((prevArea) => ({
+					...prevArea,
+					x: Math.min(
+						Math.max(prevArea.x - event.movementX, 0),
+						stageWidth - visibleSquareSize
+					),
+					y: Math.min(
+						Math.max(prevArea.y - event.movementY, 0),
+						stageHeight - visibleSquareSize
+					),
+				}));
+			}
+		},
+		[isEditMode]
+	);
+
+	// useAreaDimensions(isEditMode, handleMouseMove);
 
 	function onPaste(parsedData) {
 		setObjects((prevObjects) => {
@@ -253,6 +282,7 @@ const Editor = () => {
 				cursor="pointer"
 				isEditMode={isEditMode}
 				tint={selectedItems.includes(id) ? '#F43F5E' : 0xffffff}
+				visibleArea={visibleArea}
 			/>
 		);
 	});
@@ -281,7 +311,7 @@ const Editor = () => {
 		app.stage.sortableChildren = true;
 	}, [app]);
 
-	console.log('rerender of editor');
+	// console.log('rerender of editor');
 
 	return (
 		<div
@@ -305,6 +335,7 @@ const Editor = () => {
 					gap: 20,
 					width: '100%',
 				}}
+				// onMouseDown={handleMouseMove}
 			>
 				<Stage
 					options={{
@@ -315,7 +346,7 @@ const Editor = () => {
 					onPointerDown={(e) => {
 						// debugger;
 
-						console.log('pointer down');
+						// console.log('pointer down');
 						e.preventDefault();
 						if (selectedItems.length === 0) {
 							return;
@@ -327,24 +358,42 @@ const Editor = () => {
 						console.log(selectedItems.length);
 						setSelectedItems([]);
 					}}
+					onPointerMove={handleMouseMove}
 					// onPointerUp={handleMouseUp}
-					width={1160}
-					height={760}
+					width={visibleSquareSize}
+					height={visibleSquareSize}
 					onMount={setApp}
 					style={{ border: '1px dashed black' }}
 				>
-					<Grid
-						width={1160}
-						height={760}
-						pointerdown={(e) => {
-							handleMouseDown(e);
-						}}
-						pointerup={handleMouseUp}
-						pointerupoutside={handleMouseUp}
+					<Container
+						position={{ x: -visibleArea.x, y: -visibleArea.y }}
+						scale={{ x: visibleArea.scale, y: visibleArea.scale }}
 					>
-						<AreaSelectionComponent />
-						{boxes}
-					</Grid>
+						<Grid
+							width={stageWidth}
+							height={stageHeight}
+							// pointerdown={(e) => {
+							// 	console.log('Current pointerdon');
+							// 	app.stage.on('mousemove', handleMouseMove);
+							// 	// handleMouseDown(e)
+							// }}
+							// pointerup={(e) => {
+							// 	// handleMouseUp(e);
+							// 	app.stage.off('mousemove', handleMouseMove);
+							// }}
+							// pointerupoutside={(e) => {
+							// 	// handleMouseUp(e);
+							// 	app.stage.off('mousemove', handleMouseMove);
+							// }}
+							// mousemove={handleMouseMove}
+							// onmousemove={handleMouseMove}
+							// mousemove={handleMouseMove}
+							style={{ border: '1px solid red' }}
+						>
+							<AreaSelectionComponent />
+							{boxes}
+						</Grid>
+					</Container>
 				</Stage>
 
 				{/* <TestStage /> */}
