@@ -5,8 +5,7 @@ import { Rectangle } from 'pixi.js';
 const gridSize = 20;
 const highlightedSquareSize = 5;
 
-const Grid = ({ width, height, onMouseMove, children, ...props }) => {
-	const app = useApp();
+const Grid = ({ width, height, ...props }) => {
 	// const gridSize = {
 	// 	rows: Math.floor(height / cellSize),
 	// 	columns: Math.floor(width / cellSize),
@@ -60,9 +59,6 @@ const Grid = ({ width, height, onMouseMove, children, ...props }) => {
 	return (
 		<>
 			<Graphics draw={drawGrid} />
-			<Container sortableChildren={true} {...props} eventMode="static" hitArea={app.screen}>
-				{children}
-			</Container>
 		</>
 	);
 };

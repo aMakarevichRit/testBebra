@@ -1,8 +1,8 @@
 // eslint-disable-next-line
 // @ts-ignore
-import { MouseEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { Stage, Container, Sprite } from '@pixi/react';
-import { Texture } from 'pixi.js';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Stage, Container } from '@pixi/react';
+import { FederatedPointerEvent, Rectangle, Texture } from 'pixi.js';
 import tableSmall from '../assets/table2.png';
 import table3 from '../assets/table3.png';
 import table4 from '../assets/table4.png';
@@ -15,10 +15,6 @@ import { useWheel } from '../hooks/useWheel';
 import { useAreaSelection } from '../hooks/useAreaSelection';
 import { useDragging } from '../hooks/useDragging';
 import Grid from './Grid';
-import TestStage from './TestStage';
-import SelectionRectangle from './SelectionRectangle';
-import { AreaSelectionProvider } from './AreaSelectionContext';
-import { useAreaDimensions } from '../hooks/useAreaDimensions';
 
 const stageWidth = 1600; // Width of the entire stage
 const stageHeight = 1600; // Height of the entire stage
@@ -67,6 +63,8 @@ const Editor = () => {
 	const [isEditMode, setIsEditMode] = useState(true);
 	const [app, setApp] = useState();
 	const [visibleArea, setVisibleArea] = useState({ x: 0, y: 0, scale: 1 });
+	const isClickOnArea = useRef(false);
+	const viewContainerRef = useRef();
 
 	useEffect(() => {
 		globalThis.__PIXI_APP__ = app;
@@ -82,6 +80,25 @@ const Editor = () => {
 	useKeyboard(isEditMode, handleKeyDown);
 	useWheel(isEditMode, handleResize);
 
+	const updateItem = useCallback((updatedState, id) => {
+		setObjects((prevObjects) =>
+			prevObjects.map((obj) => {
+				if (obj.id !== id) {
+					return obj;
+				}
+
+				return { ...obj, ...updatedState };
+			})
+		);
+	}, []);
+
+	const { onDragEnd, onDragStart, onDragMove, isDragging } = useDragging(
+		updateItem,
+		visibleArea,
+		selectedItems,
+		stageWidth,
+		stageHeight
+	);
 	// useEffect(() => {
 	// 	console.log(areaItems);
 	// }, [areaItems]);
@@ -89,26 +106,12 @@ const Editor = () => {
 	// const [refObjects, setRefObjects] = useState([]);
 	const [savedState, setSavedState] = useState('');
 
-	const handleMouseMove = useCallback(
-		(event) => {
-			if (event.buttons === 1 && isEditMode) {
-				console.log('move ');
+	// const handleMouseMove = useCallback(
+	// 	(event) => {
 
-				setVisibleArea((prevArea) => ({
-					...prevArea,
-					x: Math.min(
-						Math.max(prevArea.x - event.movementX, 0),
-						stageWidth - visibleSquareSize
-					),
-					y: Math.min(
-						Math.max(prevArea.y - event.movementY, 0),
-						stageHeight - visibleSquareSize
-					),
-				}));
-			}
-		},
-		[isEditMode]
-	);
+	// 	},
+	// 	[isEditMode]
+	// );
 
 	// useAreaDimensions(isEditMode, handleMouseMove);
 
@@ -247,25 +250,6 @@ const Editor = () => {
 		});
 	};
 
-	const updateItem = useCallback(
-		(updatedState, id) => {
-			const updatedObjects = objects.map((obj) => {
-				if (obj.id !== id) {
-					return obj;
-				}
-
-				return { ...obj, ...updatedState };
-			});
-
-			setObjects(updatedObjects);
-			// if (app) {
-			// 	debugger;
-			// 	app.stage.children[0].children.sort((itemA, itemB) => itemA.zIndex - itemB.zIndex);
-			// }
-		},
-		[objects]
-	);
-
 	const boxes = objects.map(({ id, position, scale, rotation, textureSrc, zIndex, alpha }) => {
 		return (
 			<DraggableBox
@@ -282,7 +266,6 @@ const Editor = () => {
 				cursor="pointer"
 				isEditMode={isEditMode}
 				tint={selectedItems.includes(id) ? '#F43F5E' : 0xffffff}
-				visibleArea={visibleArea}
 			/>
 		);
 	});
@@ -302,6 +285,107 @@ const Editor = () => {
 		]);
 	}, []);
 
+	const onPointerMove = useCallback(
+		(e: FederatedPointerEvent) => {
+			e.preventDefault();
+			isClickOnArea.current = false;
+
+			if (isDragging.current) {
+				onDragMove(e);
+				return;
+			}
+
+			if (e.buttons === 1 && viewContainerRef.current) {
+				console.log('move ');
+				const currentX = Math.abs(viewContainerRef.current.x);
+				const currentY = Math.abs(viewContainerRef.current.y);
+
+				console.log('current coord', currentX, currentY);
+				debugger;
+				viewContainerRef.current.position = {
+					x: -Math.min(
+						Math.max(currentX - e.movementX, 0),
+						stageWidth - visibleSquareSize
+					),
+					y: -Math.min(
+						Math.max(currentY - e.movementY, 0),
+						stageHeight - visibleSquareSize
+					),
+				};
+			}
+		},
+		[onDragMove, isDragging]
+	);
+
+	const onPointerUp = useCallback(
+		(e: FederatedPointerEvent) => {
+			debugger;
+			if (!app) {
+				return;
+			}
+
+			app.stage.off('pointermove', onPointerMove);
+
+			if (isDragging.current) {
+				onDragEnd(e);
+				return;
+			}
+
+			setVisibleArea((prevArea) => ({
+				...prevArea,
+				x: -viewContainerRef.current?.x,
+				y: -viewContainerRef.current?.y,
+			}));
+
+			const isClickOnItem = e.target?.isSprite;
+			if (!isClickOnArea.current || isClickOnItem) {
+				return;
+			}
+
+			setSelectedItems([]);
+		},
+		[app, onDragEnd, onPointerMove, isDragging]
+	);
+
+	const onPointerUpOutside = useCallback(
+		(e: FederatedPointerEvent) => {
+			if (!app) {
+				return;
+			}
+
+			app.stage.off('pointermove', onPointerMove);
+			onDragEnd(e);
+		},
+		[app, onDragEnd, onPointerMove]
+	);
+
+	const onPointerDown = useCallback(
+		(e: FederatedPointerEvent) => {
+			if (!app) {
+				return;
+			}
+
+			e.preventDefault();
+			isClickOnArea.current = true;
+			app.stage.on('pointermove', onPointerMove);
+
+			const isClickOnItem = e.target?.isSprite;
+			if (!isClickOnItem) {
+				return;
+			}
+
+			onDragStart(e);
+		},
+		[app, onPointerMove, onDragStart]
+	);
+
+	const onPointerTap = useCallback((e: FederatedPointerEvent) => {
+		if (isClickOnArea.current && e.target?.isSprite) {
+			updateSelectedItems(e.target['data-id']);
+			return;
+		}
+	}, []);
+
 	useEffect(() => {
 		if (!app) {
 			return;
@@ -309,9 +393,16 @@ const Editor = () => {
 
 		app.stage.hitArea = app.screen;
 		app.stage.sortableChildren = true;
-	}, [app]);
+		// app.stage.on('pointerup', onPointerUp);
+		// app.stage.on('pointerupoutside', onPointerUpOutside);
 
-	// console.log('rerender of editor');
+		// return () => {
+		// 	app.stage.off('pointerup', onPointerUp);
+		// 	app.stage.off('pointerupoutside', onPointerUpOutside);
+		// };
+	}, [app, onPointerUp, onPointerUpOutside]);
+
+	console.log('rerender of editor');
 
 	return (
 		<div
@@ -334,6 +425,7 @@ const Editor = () => {
 					display: 'flex',
 					gap: 20,
 					width: '100%',
+					justifyContent: 'center',
 				}}
 				// onMouseDown={handleMouseMove}
 			>
@@ -342,66 +434,40 @@ const Editor = () => {
 						backgroundColor: 0x000,
 						eventMode: 'static',
 					}}
-					onContextMenu={(e) => e.preventDefault()}
-					onPointerDown={(e) => {
-						// debugger;
-
-						// console.log('pointer down');
-						e.preventDefault();
-						if (selectedItems.length === 0) {
-							return;
-						}
-
-						// console.log('pointer down of stage', e.currentTarget, e.target);
-
-						console.log('reset selected');
-						console.log(selectedItems.length);
-						setSelectedItems([]);
-					}}
-					onPointerMove={handleMouseMove}
-					// onPointerUp={handleMouseUp}
+					// onContextMenu={(e) => e.preventDefault()}
+					// onPointerDown={(e) => {
+					// 	console.log('pointer down on stage');
+					// }}
+					// onPointerMove={handleMouseMove}
 					width={visibleSquareSize}
 					height={visibleSquareSize}
 					onMount={setApp}
-					style={{ border: '1px dashed black' }}
 				>
 					<Container
-						position={{ x: -visibleArea.x, y: -visibleArea.y }}
-						scale={{ x: visibleArea.scale, y: visibleArea.scale }}
+						sortableChildren={true}
+						eventMode="static"
+						pointerdown={onPointerDown}
+						pointerup={onPointerUp}
+						pointerupoutside={onPointerUpOutside}
+						pointertap={onPointerTap}
+						// position={{ x: -visibleArea.x, y: -visibleArea.y }}
+						// scale={{ x: visibleArea.scale, y: visibleArea.scale }}
+						zIndex={1000}
+						width={stageWidth}
+						height={stageHeight}
+						hitArea={new Rectangle(0, 0, stageWidth, stageHeight)}
+						ref={viewContainerRef}
 					>
-						<Grid
-							width={stageWidth}
-							height={stageHeight}
-							// pointerdown={(e) => {
-							// 	console.log('Current pointerdon');
-							// 	app.stage.on('mousemove', handleMouseMove);
-							// 	// handleMouseDown(e)
-							// }}
-							// pointerup={(e) => {
-							// 	// handleMouseUp(e);
-							// 	app.stage.off('mousemove', handleMouseMove);
-							// }}
-							// pointerupoutside={(e) => {
-							// 	// handleMouseUp(e);
-							// 	app.stage.off('mousemove', handleMouseMove);
-							// }}
-							// mousemove={handleMouseMove}
-							// onmousemove={handleMouseMove}
-							// mousemove={handleMouseMove}
-							style={{ border: '1px solid red' }}
-						>
+						<Container>
+							<Grid width={stageWidth} height={stageHeight} />
 							<AreaSelectionComponent />
-							{boxes}
-						</Grid>
+						</Container>
+						{boxes}
 					</Container>
 				</Stage>
 
 				{/* <TestStage /> */}
-				<div>
-					{/* <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-						<img src={tableSmall} width={120} height={120} />
-						<button onClick={() => onAddObject('table')}>Add table</button>
-					</div> */}
+				{/* <div>
 					<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 						<img src={table4} width={120} height={220} />
 						<button onClick={() => onAddObject('table4')}>Add table</button>
@@ -410,7 +476,7 @@ const Editor = () => {
 						<img src={seat} width={120} height={120} />
 						<button onClick={() => onAddObject('seat')}>Add seat</button>
 					</div>
-				</div>
+				</div> */}
 			</div>
 			<pre style={{ maxHeight: '600px', height: '100%' }}>
 				{JSON.stringify(objects, null, 2)}

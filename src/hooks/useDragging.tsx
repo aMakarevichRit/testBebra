@@ -1,84 +1,108 @@
-import { useApp } from '@pixi/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 
-const useDragging = (updateItem, visibleArea) => {
-	const app = useApp();
-	const offset = useRef({ shiftX: 0, shiftY: 0 });
-	const [isClicking, setIsClicking] = useState(false);
+const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHeight) => {
+	const offset = useRef({});
 	const dropTarget = useRef(null);
 	const isDragging = useRef(false);
 
-	const onDragMove = useCallback((e) => {
-		e.nativeEvent.stopImmediatePropagation();
-		console.log('drag moove');
-		if (isDragging.current && dropTarget.current) {
-			debugger;
-			setIsClicking(false);
-			const local = dropTarget.current.parent.toLocal(e.global);
-			dropTarget.current.position = {
-				x: local.x - offset.current.shiftX,
-				y: local.y - offset.current.shiftY,
-			};
-		}
-	}, []);
+	const onDragMove = useCallback(
+		(e) => {
+			// e.nativeEvent.stopImmediatePropagation();
+
+			if (isDragging.current && dropTarget.current && selectedItems.length > 0) {
+				console.log('drag moove');
+
+				// debugger;
+				const children = dropTarget.current.parent.children;
+				// debugger;
+				children.forEach((item) => {
+					const id = item['data-id'];
+					if (!selectedItems.includes(id) || !item.isSprite) {
+						return;
+					}
+
+					const minX = item.width / 2 + 20;
+					const minY = item.height / 2 + 20;
+					console.log('item', item.width, item.height);
+					const maxX = stageWidth - item.width / 2 - 20;
+					const maxY = stageHeight - item.height / 2 - 20;
+
+					const local = item.parent.toLocal(e.global);
+					const x = Math.max(minX, Math.min(local.x - offset.current[id].shiftX, maxX));
+					const y = Math.max(minY, Math.min(local.y - offset.current[id].shiftY, maxY));
+
+					item.position = { x, y };
+				});
+			}
+		},
+		[selectedItems, stageWidth, stageHeight]
+	);
 
 	const onDragEnd = useCallback(
 		(e) => {
+			// debugger;
 			if (dropTarget.current) {
 				isDragging.current = false;
-				app.stage.off('pointermove', onDragMove);
 				const cellSize = 10;
-				const cellX = Math.round(dropTarget.current.x / cellSize);
-				const cellY = Math.round(dropTarget.current.y / cellSize);
-				updateItem({
-					position: {
-						x: cellX * cellSize,
-						y: cellY * cellSize,
-					},
-					alpha: 1,
+
+				const children = dropTarget.current.parent.children;
+				children.forEach((item) => {
+					if (!selectedItems.includes(item['data-id']) || !item.isSprite) {
+						return;
+					}
+
+					const cellX = Math.round(item.x / cellSize);
+					const cellY = Math.round(item.y / cellSize);
+					updateItem(
+						{
+							position: {
+								x: cellX * cellSize,
+								y: cellY * cellSize,
+							},
+							alpha: 1,
+						},
+						item['data-id']
+					);
 				});
+
 				dropTarget.current = null;
 			}
 		},
-		[app.stage, onDragMove, updateItem]
+		[updateItem, selectedItems]
 	);
-
-	useEffect(() => {
-		app.stage.on('pointerup', onDragEnd);
-		app.stage.on('pointerupoutside', onDragEnd);
-
-		return () => {
-			app.stage.off('pointerup', onDragEnd);
-			app.stage.off('pointerupoutside', onDragEnd);
-		};
-	}, [app.stage, app.screen, onDragEnd]);
 
 	const onDragStart = useCallback(
 		(e) => {
-			console.log('click on stage');
-			e.nativeEvent.stopImmediatePropagation();
-			// console.log('pointer down of item', e.currentTarget, e.target);
-			if (e.currentTarget) {
-				debugger;
-				setIsClicking(true);
-				isDragging.current = true;
-				dropTarget.current = e.currentTarget;
-				offset.current = {
-					shiftX: e.data.global.x + visibleArea.x - dropTarget.current?.x,
-					shiftY: e.data.global.y + visibleArea.y - dropTarget.current?.y,
-				};
-				updateItem({ zIndex: dropTarget.current?.zIndex + 1, alpha: 0.5 });
-				app.stage.on('pointermove', onDragMove);
+			// e.nativeEvent.stopImmediatePropagation();
+			if (e.target && e.target.isSprite) {
+				if (selectedItems.length > 0) {
+					isDragging.current = true;
+					dropTarget.current = e.target;
+					const children = e.target.parent.children;
+					// debugger;
+					children.forEach((item) => {
+						if (!selectedItems.includes(item['data-id']) || !item.isSprite) {
+							return;
+						}
+
+						offset.current[item['data-id']] = {
+							shiftX: e.data.global.x + visibleArea.x - item.x,
+							shiftY: e.data.global.y + visibleArea.y - item.y,
+						};
+
+						updateItem({ zIndex: item.zIndex + 1, alpha: 0.5 }, item['data-id']);
+					});
+				}
 			}
 		},
-		[app.stage, onDragMove, updateItem, visibleArea]
+		[updateItem, visibleArea, selectedItems]
 	);
 
 	return {
 		onDragStart,
 		onDragEnd,
 		onDragMove,
-		isClicking,
+		isDragging,
 	};
 };
 
