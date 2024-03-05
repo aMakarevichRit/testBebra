@@ -2,7 +2,7 @@ import { Graphics, Point, Rectangle } from 'pixi.js';
 import { useCallback, useRef } from 'react';
 import { Graphics as GraphicsComponent } from '@pixi/react';
 
-const useAreaSelection = (stage, setSelectedItems) => {
+const useAreaSelection = (stage, setSelectedItems, visibleArea) => {
 	const endPoint = useRef(null);
 	const startPoint = useRef(null);
 	const graphicsRef = useRef(null);
@@ -48,10 +48,10 @@ const useAreaSelection = (stage, setSelectedItems) => {
 
 	const handleMouseMove = useCallback(
 		(e) => {
-			endPoint.current = { x: e.global.x, y: e.global.y };
+			endPoint.current = { x: e.global.x + visibleArea.x, y: e.global.y + visibleArea.y };
 			drawSelectionRectangle(graphicsRef.current);
 		},
-		[endPoint, drawSelectionRectangle]
+		[endPoint, drawSelectionRectangle, visibleArea]
 	);
 
 	const handleMouseDown = useCallback(
@@ -59,46 +59,55 @@ const useAreaSelection = (stage, setSelectedItems) => {
 			if (e.target.isSprite) {
 				return;
 			}
-			startPoint.current = { x: e.global.x, y: e.global.y };
-			stage.on('pointermove', handleMouseMove);
+			startPoint.current = { x: e.global.x + visibleArea.x, y: e.global.y + visibleArea.y };
 		},
-		[stage, handleMouseMove, startPoint]
+		[startPoint, visibleArea]
 	);
 
-	const handleMouseUp = useCallback(() => {
-		console.log('updateCoordinates', startPoint.current, endPoint.current);
-		if (startPoint.current && endPoint.current && stage) {
-			const selected = [];
-			const selectionRect = new Rectangle(
-				Math.min(startPoint.current.x, endPoint.current.x),
-				Math.min(startPoint.current.y, endPoint.current.y),
-				Math.abs(startPoint.current.x - endPoint.current.x),
-				Math.abs(startPoint.current.y - endPoint.current.y)
-			);
+	const handleMouseUp = useCallback(
+		(e) => {
+			if (startPoint.current && endPoint.current && stage) {
+				const selected = [];
+				const selectionRect = new Rectangle(
+					Math.min(
+						startPoint.current.x - visibleArea.x,
+						endPoint.current.x - visibleArea.x
+					),
+					Math.min(
+						startPoint.current.y - visibleArea.y,
+						endPoint.current.y - visibleArea.y
+					),
+					Math.abs(startPoint.current.x - endPoint.current.x),
+					Math.abs(startPoint.current.y - endPoint.current.y)
+				);
 
-			stage.children[1].children.forEach((child) => {
-				if (child.getBounds().intersects(selectionRect)) {
-					selected.push(child);
-				}
-			});
-			debugger;
-			setSelectedItems(
-				selected.filter((item) => item.isSprite).map((item) => item['data-id'])
-			);
-		}
+				stage.children[0].children
+					.filter((item) => item.isSprite)
+					.forEach((child) => {
+						if (child.getBounds().intersects(selectionRect)) {
+							selected.push(child);
+						}
+					});
 
-		stage.off('pointermove', handleMouseMove);
-		startPoint.current = null;
-		endPoint.current = null;
-	}, [stage, handleMouseMove, setSelectedItems]);
+				setSelectedItems(
+					selected.filter((item) => item.isSprite).map((item) => item['data-id'])
+				);
+			}
+
+			startPoint.current = null;
+			endPoint.current = null;
+		},
+		[stage, setSelectedItems, visibleArea]
+	);
 
 	const AreaSelectionComponent = () => (
 		<GraphicsComponent draw={drawSelectionRectangle} ref={graphicsRef} zIndex={100} />
 	);
 
 	return {
-		handleMouseUp,
-		handleMouseDown,
+		onAreaSelectionMouseUp: handleMouseUp,
+		onAreaSelectionMouseDown: handleMouseDown,
+		onAreaSelectionMouseMove: handleMouseMove,
 		AreaSelectionComponent,
 	};
 };

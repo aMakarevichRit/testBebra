@@ -4,11 +4,11 @@ const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHe
 	const offset = useRef({});
 	const dropTarget = useRef(null);
 	const isDragging = useRef(false);
-
+	console.log('selectedItems', selectedItems);
 	const onDragMove = useCallback(
 		(e) => {
 			// e.nativeEvent.stopImmediatePropagation();
-
+			debugger;
 			if (isDragging.current && dropTarget.current && selectedItems.length > 0) {
 				console.log('drag moove');
 
@@ -32,6 +32,7 @@ const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHe
 					const y = Math.max(minY, Math.min(local.y - offset.current[id].shiftY, maxY));
 
 					item.position = { x, y };
+					item.alpha = 0.5;
 				});
 			}
 		},
@@ -60,6 +61,7 @@ const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHe
 								y: cellY * cellSize,
 							},
 							alpha: 1,
+							zIndex: item.zIndex,
 						},
 						item['data-id']
 					);
@@ -74,7 +76,12 @@ const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHe
 	const onDragStart = useCallback(
 		(e) => {
 			// e.nativeEvent.stopImmediatePropagation();
-			if (e.target && e.target.isSprite) {
+			if (
+				e.target &&
+				e.target.isSprite &&
+				e.button === 0 &&
+				selectedItems.includes(e.target['data-id'])
+			) {
 				if (selectedItems.length > 0) {
 					isDragging.current = true;
 					dropTarget.current = e.target;
@@ -90,12 +97,12 @@ const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHe
 							shiftY: e.data.global.y + visibleArea.y - item.y,
 						};
 
-						updateItem({ zIndex: item.zIndex + 1, alpha: 0.5 }, item['data-id']);
+						item.zIndex = item.zIndex + 1;
 					});
 				}
 			}
 		},
-		[updateItem, visibleArea, selectedItems]
+		[visibleArea, selectedItems]
 	);
 
 	return {

@@ -1,8 +1,8 @@
 // eslint-disable-next-line
 // @ts-ignore
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Stage, Container } from '@pixi/react';
-import { FederatedPointerEvent, Rectangle, Texture } from 'pixi.js';
+import { Stage, Container, Sprite } from '@pixi/react';
+import { Application, FederatedPointerEvent, ICanvas, Rectangle, Texture } from 'pixi.js';
 import tableSmall from '../assets/table2.png';
 import table3 from '../assets/table3.png';
 import table4 from '../assets/table4.png';
@@ -59,9 +59,9 @@ const defaultObjects = [
 
 const Editor = () => {
 	const [objects, setObjects] = useState(defaultObjects);
-	const [selectedItems, setSelectedItems] = useState([]);
+	const [selectedItems, setSelectedItems] = useState<string[]>([]);
 	const [isEditMode, setIsEditMode] = useState(true);
-	const [app, setApp] = useState();
+	const [app, setApp] = useState<Application<ICanvas>>();
 	const [visibleArea, setVisibleArea] = useState({ x: 0, y: 0, scale: 1 });
 	const isClickOnArea = useRef(false);
 	const viewContainerRef = useRef();
@@ -72,11 +72,11 @@ const Editor = () => {
 	const { handleCopy, handlePaste } = useCopy(selectedItems, onPaste);
 
 	const {
-		handleMouseDown,
-		handleMouseUp,
-		selectedItems: areaItems,
+		onAreaSelectionMouseDown,
+		onAreaSelectionMouseUp,
+		onAreaSelectionMouseMove,
 		AreaSelectionComponent,
-	} = useAreaSelection(app?.stage, setSelectedItems);
+	} = useAreaSelection(app?.stage, setSelectedItems, visibleArea);
 	useKeyboard(isEditMode, handleKeyDown);
 	useWheel(isEditMode, handleResize);
 
@@ -99,21 +99,8 @@ const Editor = () => {
 		stageWidth,
 		stageHeight
 	);
-	// useEffect(() => {
-	// 	console.log(areaItems);
-	// }, [areaItems]);
 
-	// const [refObjects, setRefObjects] = useState([]);
 	const [savedState, setSavedState] = useState('');
-
-	// const handleMouseMove = useCallback(
-	// 	(event) => {
-
-	// 	},
-	// 	[isEditMode]
-	// );
-
-	// useAreaDimensions(isEditMode, handleMouseMove);
 
 	function onPaste(parsedData) {
 		setObjects((prevObjects) => {
@@ -252,19 +239,18 @@ const Editor = () => {
 
 	const boxes = objects.map(({ id, position, scale, rotation, textureSrc, zIndex, alpha }) => {
 		return (
-			<DraggableBox
+			<Sprite
 				key={id}
-				id={id}
 				texture={Texture.from(textureSrc)}
 				alpha={alpha}
 				position={position}
 				rotation={rotation}
 				scale={scale}
 				zIndex={zIndex}
-				updateItem={updateItem}
-				updateSelectedItems={updateSelectedItems}
 				cursor="pointer"
-				isEditMode={isEditMode}
+				eventMode="static"
+				anchor={0.5}
+				data-id={id}
 				tint={selectedItems.includes(id) ? '#F43F5E' : 0xffffff}
 			/>
 		);
@@ -295,13 +281,10 @@ const Editor = () => {
 				return;
 			}
 
-			if (e.buttons === 1 && viewContainerRef.current) {
-				console.log('move ');
+			if (e.buttons === 2 && viewContainerRef.current) {
 				const currentX = Math.abs(viewContainerRef.current.x);
 				const currentY = Math.abs(viewContainerRef.current.y);
 
-				console.log('current coord', currentX, currentY);
-				debugger;
 				viewContainerRef.current.position = {
 					x: -Math.min(
 						Math.max(currentX - e.movementX, 0),
@@ -319,7 +302,6 @@ const Editor = () => {
 
 	const onPointerUp = useCallback(
 		(e: FederatedPointerEvent) => {
-			debugger;
 			if (!app) {
 				return;
 			}
@@ -391,16 +373,56 @@ const Editor = () => {
 			return;
 		}
 
-		app.stage.hitArea = app.screen;
-		app.stage.sortableChildren = true;
-		// app.stage.on('pointerup', onPointerUp);
-		// app.stage.on('pointerupoutside', onPointerUpOutside);
-
-		// return () => {
-		// 	app.stage.off('pointerup', onPointerUp);
-		// 	app.stage.off('pointerupoutside', onPointerUpOutside);
-		// };
+		// app.stage.hitArea = app.screen;
+		// app.stage.sortableChildren = true;
 	}, [app, onPointerUp, onPointerUpOutside]);
+
+	const onMouseMove = useCallback(
+		(e: FederatedPointerEvent) => {
+			onAreaSelectionMouseMove(e);
+		},
+		[onAreaSelectionMouseMove]
+	);
+
+	const onMouseDown = useCallback(
+		(e: FederatedPointerEvent) => {
+			if (!app) {
+				return;
+			}
+
+			onAreaSelectionMouseDown(e);
+
+			// check pointer capture setPointerCapture
+			app.stage.on('mousemove', onMouseMove);
+		},
+		[app, onAreaSelectionMouseDown, onMouseMove]
+	);
+
+	const onMouseUp = useCallback(
+		(e: FederatedPointerEvent) => {
+			if (!app) {
+				return;
+			}
+
+			app.stage.off('mousemove', onMouseMove);
+
+			onAreaSelectionMouseUp(e);
+		},
+		[app, onAreaSelectionMouseUp, onMouseMove]
+	);
+
+	const onMouseUpOutside = useCallback(
+		(e: FederatedPointerEvent) => {
+			if (!app) {
+				return;
+			}
+
+			app.stage.off('mousemove', onMouseMove);
+
+			onAreaSelectionMouseUp(e);
+		},
+		[onAreaSelectionMouseUp, app, onMouseMove]
+	);
 
 	console.log('rerender of editor');
 
@@ -434,7 +456,7 @@ const Editor = () => {
 						backgroundColor: 0x000,
 						eventMode: 'static',
 					}}
-					// onContextMenu={(e) => e.preventDefault()}
+					onContextMenu={(e) => e.preventDefault()}
 					// onPointerDown={(e) => {
 					// 	console.log('pointer down on stage');
 					// }}
@@ -450,6 +472,9 @@ const Editor = () => {
 						pointerup={onPointerUp}
 						pointerupoutside={onPointerUpOutside}
 						pointertap={onPointerTap}
+						mousedown={onMouseDown}
+						mouseup={onMouseUp}
+						mouseupoutside={onMouseUpOutside}
 						// position={{ x: -visibleArea.x, y: -visibleArea.y }}
 						// scale={{ x: visibleArea.scale, y: visibleArea.scale }}
 						zIndex={1000}
