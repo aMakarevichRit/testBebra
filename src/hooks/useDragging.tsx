@@ -4,7 +4,7 @@ const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHe
 	const offset = useRef({});
 	const dropTarget = useRef(null);
 	const isDragging = useRef(false);
-	console.log('selectedItems', selectedItems);
+
 	const onDragMove = useCallback(
 		(e) => {
 			// e.nativeEvent.stopImmediatePropagation();
@@ -102,7 +102,7 @@ const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHe
 				}
 			}
 		},
-		[visibleArea, selectedItems]
+		[visibleArea.x, visibleArea.y, selectedItems]
 	);
 
 	return {

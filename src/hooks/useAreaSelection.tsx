@@ -51,7 +51,7 @@ const useAreaSelection = (stage, setSelectedItems, visibleArea) => {
 			endPoint.current = { x: e.global.x + visibleArea.x, y: e.global.y + visibleArea.y };
 			drawSelectionRectangle(graphicsRef.current);
 		},
-		[endPoint, drawSelectionRectangle, visibleArea]
+		[endPoint, drawSelectionRectangle, visibleArea.x, visibleArea.y]
 	);
 
 	const handleMouseDown = useCallback(
@@ -61,7 +61,7 @@ const useAreaSelection = (stage, setSelectedItems, visibleArea) => {
 			}
 			startPoint.current = { x: e.global.x + visibleArea.x, y: e.global.y + visibleArea.y };
 		},
-		[startPoint, visibleArea]
+		[startPoint, visibleArea.x, visibleArea.y]
 	);
 
 	const handleMouseUp = useCallback(
@@ -97,7 +97,7 @@ const useAreaSelection = (stage, setSelectedItems, visibleArea) => {
 			startPoint.current = null;
 			endPoint.current = null;
 		},
-		[stage, setSelectedItems, visibleArea]
+		[stage, setSelectedItems, visibleArea.x, visibleArea.y]
 	);
 
 	const AreaSelectionComponent = () => (

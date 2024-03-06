@@ -2,13 +2,12 @@
 // @ts-ignore
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Stage, Container, Sprite } from '@pixi/react';
-import { Application, FederatedPointerEvent, ICanvas, Rectangle, Texture } from 'pixi.js';
+import { Application, FederatedPointerEvent, ICanvas, Point, Rectangle, Texture } from 'pixi.js';
 import tableSmall from '../assets/table2.png';
 import table3 from '../assets/table3.png';
 import table4 from '../assets/table4.png';
 import seat from '../assets/seat-v4.png';
 import ErrorBoundary from './ErrorBoundary';
-import DraggableBox from './DraggableBox';
 import { useKeyboard } from '../hooks/useKeyboard';
 import { useCopy } from '../hooks/useCopy';
 import { useWheel } from '../hooks/useWheel';
@@ -62,8 +61,9 @@ const Editor = () => {
 	const [selectedItems, setSelectedItems] = useState<string[]>([]);
 	const [isEditMode, setIsEditMode] = useState(true);
 	const [app, setApp] = useState<Application<ICanvas>>();
-	const [visibleArea, setVisibleArea] = useState({ x: 0, y: 0, scale: 1 });
+	const [visibleArea, setVisibleArea] = useState({ x: 0, y: 0, scale: { x: 1, y: 1 } });
 	const isClickOnArea = useRef(false);
+	const stageRef = useRef();
 	const viewContainerRef = useRef();
 
 	useEffect(() => {
@@ -170,7 +170,6 @@ const Editor = () => {
 		}
 
 		if (shiftPosition) {
-			console.log(shiftPosition);
 			updatedObjects = objects.map((obj) => {
 				if (!selectedItems.includes(obj.id)) {
 					return obj;
@@ -196,9 +195,29 @@ const Editor = () => {
 		}
 		event.preventDefault();
 
-		if (selectedItems.length !== 0) {
-			const scaleFactor = event.deltaY > 0 ? 0.9 : 1.1; // Scale factor based on mouse wheel direction
+		const scaleFactor = event.deltaY > 0 ? 0.9 : 1.1;
+		if (event.ctrlKey && viewContainerRef.current) {
+			const newScaleX = Math.max(
+				Math.min(viewContainerRef.current.scale.x * scaleFactor, 4),
+				1
+			);
+			const newScaleY = Math.max(
+				Math.min(viewContainerRef.current.scale.y * scaleFactor, 4),
+				1
+			);
 
+			viewContainerRef.current.scale.set(newScaleX, newScaleY);
+
+			// Update visibleArea scale
+			// setVisibleArea((prevArea) => ({
+			// 	...prevArea,
+			// 	scale: { x: newScaleX, y: newScaleY },
+			// }));
+
+			return;
+		}
+
+		if (selectedItems.length > 0) {
 			const updatedObjects = objects.map((obj) => {
 				if (!selectedItems.includes(obj.id)) {
 					return obj;
@@ -216,6 +235,10 @@ const Editor = () => {
 			setObjects(updatedObjects);
 		}
 	}
+
+	// useEffect(() => {
+	// 	viewContainerRef.current.scale = new Point(visibleArea.scale.x, visibleArea.scale.x);
+	// }, [visibleArea.scale]);
 
 	const onSaveState = useCallback(() => {
 		const savedState = saveStateToJson(objects);
@@ -306,7 +329,9 @@ const Editor = () => {
 				return;
 			}
 
+			console.log(' pointerUp id', e.pointerId);
 			app.stage.off('pointermove', onPointerMove);
+			e.nativeEvent.target?.releasePointerCapture(e.pointerId);
 
 			if (isDragging.current) {
 				onDragEnd(e);
@@ -336,6 +361,7 @@ const Editor = () => {
 			}
 
 			app.stage.off('pointermove', onPointerMove);
+			e.nativeEvent.target?.releasePointerCapture(e.pointerId);
 			onDragEnd(e);
 		},
 		[app, onDragEnd, onPointerMove]
@@ -368,14 +394,14 @@ const Editor = () => {
 		}
 	}, []);
 
-	useEffect(() => {
-		if (!app) {
-			return;
-		}
+	// useEffect(() => {
+	// 	if (!app) {
+	// 		return;
+	// 	}
 
-		// app.stage.hitArea = app.screen;
-		// app.stage.sortableChildren = true;
-	}, [app, onPointerUp, onPointerUpOutside]);
+	// 	// app.stage.hitArea = app.screen;
+	// 	// app.stage.sortableChildren = true;
+	// }, [app, onPointerUp, onPointerUpOutside]);
 
 	const onMouseMove = useCallback(
 		(e: FederatedPointerEvent) => {
@@ -426,6 +452,9 @@ const Editor = () => {
 
 	console.log('rerender of editor');
 
+	console.log('viewContainerRef.current', viewContainerRef.current?.scale);
+	console.log('visibleArea', visibleArea.scale);
+
 	return (
 		<div
 			style={{
@@ -455,6 +484,7 @@ const Editor = () => {
 					options={{
 						backgroundColor: 0x000,
 						eventMode: 'static',
+						
 					}}
 					onContextMenu={(e) => e.preventDefault()}
 					// onPointerDown={(e) => {
@@ -464,6 +494,7 @@ const Editor = () => {
 					width={visibleSquareSize}
 					height={visibleSquareSize}
 					onMount={setApp}
+					ref={stageRef}
 				>
 					<Container
 						sortableChildren={true}
@@ -476,7 +507,7 @@ const Editor = () => {
 						mouseup={onMouseUp}
 						mouseupoutside={onMouseUpOutside}
 						// position={{ x: -visibleArea.x, y: -visibleArea.y }}
-						// scale={{ x: visibleArea.scale, y: visibleArea.scale }}
+						scale={{ x: visibleArea.scale.x, y: visibleArea.scale.y }}
 						zIndex={1000}
 						width={stageWidth}
 						height={stageHeight}
