@@ -1,6 +1,13 @@
 import { useCallback, useRef } from 'react';
 
-const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHeight) => {
+const useDragging = (
+	updateItem,
+	selectedItems,
+	stageWidth,
+	stageHeight,
+	viewContainerRef,
+	cellSize
+) => {
 	const offset = useRef({});
 	const dropTarget = useRef(null);
 	const isDragging = useRef(false);
@@ -8,13 +15,13 @@ const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHe
 	const onDragMove = useCallback(
 		(e) => {
 			// e.nativeEvent.stopImmediatePropagation();
-			debugger;
-			if (isDragging.current && dropTarget.current && selectedItems.length > 0) {
-				console.log('drag moove');
-
-				// debugger;
+			if (
+				isDragging.current &&
+				dropTarget.current &&
+				selectedItems.length > 0 &&
+				viewContainerRef.current
+			) {
 				const children = dropTarget.current.parent.children;
-				// debugger;
 				children.forEach((item) => {
 					const id = item['data-id'];
 					if (!selectedItems.includes(id) || !item.isSprite) {
@@ -23,11 +30,10 @@ const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHe
 
 					const minX = item.width / 2 + 20;
 					const minY = item.height / 2 + 20;
-					console.log('item', item.width, item.height);
 					const maxX = stageWidth - item.width / 2 - 20;
 					const maxY = stageHeight - item.height / 2 - 20;
 
-					const local = item.parent.toLocal(e.global);
+					const local = viewContainerRef.current.toLocal(e.global);
 					const x = Math.max(minX, Math.min(local.x - offset.current[id].shiftX, maxX));
 					const y = Math.max(minY, Math.min(local.y - offset.current[id].shiftY, maxY));
 
@@ -36,7 +42,7 @@ const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHe
 				});
 			}
 		},
-		[selectedItems, stageWidth, stageHeight]
+		[selectedItems, stageWidth, stageHeight, viewContainerRef]
 	);
 
 	const onDragEnd = useCallback(
@@ -44,7 +50,6 @@ const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHe
 			// debugger;
 			if (dropTarget.current) {
 				isDragging.current = false;
-				const cellSize = 10;
 
 				const children = dropTarget.current.parent.children;
 				children.forEach((item) => {
@@ -70,7 +75,7 @@ const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHe
 				dropTarget.current = null;
 			}
 		},
-		[updateItem, selectedItems]
+		[updateItem, selectedItems, cellSize]
 	);
 
 	const onDragStart = useCallback(
@@ -80,21 +85,22 @@ const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHe
 				e.target &&
 				e.target.isSprite &&
 				e.button === 0 &&
-				selectedItems.includes(e.target['data-id'])
+				selectedItems.includes(e.target['data-id']) &&
+				viewContainerRef.current
 			) {
 				if (selectedItems.length > 0) {
 					isDragging.current = true;
 					dropTarget.current = e.target;
 					const children = e.target.parent.children;
-					// debugger;
 					children.forEach((item) => {
 						if (!selectedItems.includes(item['data-id']) || !item.isSprite) {
 							return;
 						}
+						const local = viewContainerRef.current.toLocal(e.global);
 
 						offset.current[item['data-id']] = {
-							shiftX: e.data.global.x + visibleArea.x - item.x,
-							shiftY: e.data.global.y + visibleArea.y - item.y,
+							shiftX: local.x - item.x,
+							shiftY: local.y - item.y,
 						};
 
 						item.zIndex = item.zIndex + 1;
@@ -102,7 +108,7 @@ const useDragging = (updateItem, visibleArea, selectedItems, stageWidth, stageHe
 				}
 			}
 		},
-		[visibleArea.x, visibleArea.y, selectedItems]
+		[selectedItems, viewContainerRef]
 	);
 
 	return {

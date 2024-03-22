@@ -3,13 +3,10 @@ import * as PIXI from 'pixi.js';
 import { PixiComponent, useApp } from '@pixi/react';
 import { Viewport as PixiViewport } from 'pixi-viewport';
 import { EventSystem } from '@pixi/events';
-import { Container as PixiContainer } from '@pixi/display';
 
 export interface ViewportProps {
 	width: number;
 	height: number;
-	screenHeight: number;
-	screenWidth: number;
 	children?: React.ReactNode;
 }
 
@@ -22,7 +19,7 @@ const PixiComponentViewport = PixiComponent('Viewport', {
 		const events = new EventSystem(props.app.renderer);
 		events.domElement = props.app.renderer.view as any;
 
-		const { width: worldWidth, height: worldHeight, screenHeight, screenWidth } = props;
+		const { width: worldWidth, height: worldHeight } = props;
 
 		const viewport = new PixiViewport({
 			worldWidth,
@@ -37,8 +34,8 @@ const PixiComponentViewport = PixiComponent('Viewport', {
 				direction: 'all',
 			})
 			.clampZoom({
-				minHeight: screenHeight / 10,
-				minWidth: screenWidth / 10,
+				minHeight: worldHeight / 10,
+				minWidth: worldWidth / 10,
 				maxHeight: worldHeight,
 				maxWidth: worldWidth,
 			})
