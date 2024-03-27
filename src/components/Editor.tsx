@@ -16,6 +16,8 @@ import { useDragging } from '../hooks/useDragging';
 import Grid from './Grid';
 import Viewport from './Viewport';
 import { EditorItem } from './EditorItem';
+import { CoordinatesProvider } from './ItemsContext';
+import TestComponent from './TestComponent';
 
 const stageWidth = 1600; // Width of the entire stage
 const stageHeight = 1600; // Height of the entire stage
@@ -254,7 +256,7 @@ const Editor = () => {
 
 	const boxes = objects.map(({ id, position, scale, rotation, textureSrc, zIndex, alpha }) => {
 		return (
-			<Sprite
+			<EditorItem
 				key={id}
 				texture={Texture.from(textureSrc)}
 				alpha={alpha}
@@ -267,6 +269,8 @@ const Editor = () => {
 				anchor={0.5}
 				data-id={id}
 				tint={selectedItems.includes(id) ? '#F43F5E' : 0xffffff}
+				isSelected={selectedItems.includes(id)}
+				viewContainerRef={viewContainerRef}
 			/>
 		);
 	});
@@ -430,9 +434,8 @@ const Editor = () => {
 					display: 'flex',
 					gap: 20,
 					width: '100%',
-					justifyContent: 'center',
+					marginLeft: 80,
 				}}
-				// onMouseDown={handleMouseMove}
 			>
 				<Stage
 					options={{
@@ -478,6 +481,7 @@ const Editor = () => {
 						</Container>
 					</Viewport>
 				</Stage>
+
 				{/* <TestStage /> */}
 				{/* <div>
 					<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

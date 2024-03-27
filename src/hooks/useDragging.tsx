@@ -1,4 +1,5 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useContext, useRef } from 'react';
+import { CoordinatesContext } from '../components/ItemsContext';
 
 const useDragging = (
 	updateItem,
@@ -8,6 +9,7 @@ const useDragging = (
 	viewContainerRef,
 	cellSize
 ) => {
+	const { setCoordinatesById } = useContext(CoordinatesContext);
 	const offset = useRef({});
 	const dropTarget = useRef(null);
 	const isDragging = useRef(false);
@@ -70,12 +72,16 @@ const useDragging = (
 						},
 						item['data-id']
 					);
+					setCoordinatesById(item['data-id'], {
+						x: cellX * cellSize,
+						y: cellY * cellSize,
+					});
 				});
 
 				dropTarget.current = null;
 			}
 		},
-		[updateItem, selectedItems, cellSize]
+		[updateItem, selectedItems, cellSize, setCoordinatesById]
 	);
 
 	const onDragStart = useCallback(
