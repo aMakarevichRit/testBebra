@@ -11,18 +11,16 @@ interface Props {
 }
 
 const ICON_SIZE = 80;
-const BORDER_PADDING = 50;
+const BORDER_PADDING = 60;
 
-const EditorItem = ({ isSelected, viewContainerRef, ...props }: Props) => {
+const EditorItem = ({ isSelected, viewContainerRef, rotation, ...props }: Props) => {
 	const itemRef = useRef<Sprite>(null);
 	const iconRef = useRef<Sprite>(null);
 	const borderRef = useRef<Graphics>(null);
 
 	const { width, height } = itemRef.current?.texture || { width: 0, height: 0 };
 
-	console.log('rotation', itemRef.current?.rotation, itemRef.current?.worldTransform);
-	console.log('icon rotation', iconRef.current?.rotation, iconRef.current?.worldTransform);
-	console.log('border rotation', borderRef.current?.rotation);
+	
 
 	const drawContainer = (g: Graphics) => {
 		if (!itemRef.current || !g) {
@@ -44,24 +42,20 @@ const EditorItem = ({ isSelected, viewContainerRef, ...props }: Props) => {
 		return <ReactSprite {...props} ref={itemRef} />;
 	}
 
-	const childRotation =
-		itemRef.current?.rotation !== undefined
-			? -((itemRef.current.rotation + Math.PI / 2) % (Math.PI * 2))
-			: 0;
-
 	return (
-		<ReactSprite {...props} ref={itemRef}>
-			<GraphicsComponent draw={drawContainer} ref={borderRef} rotation={childRotation} />
+		<ReactSprite {...props} ref={itemRef} rotation={rotation}>
+			<GraphicsComponent draw={drawContainer} ref={borderRef} />
 			<ReactSprite
 				texture={Texture.from(rotateTexture)}
 				onclick={() => console.log('rotate')}
 				cursor="pointer"
 				width={ICON_SIZE}
 				height={ICON_SIZE}
-				x={-width / 2 - ICON_SIZE / 2 - BORDER_PADDING}
-				y={-height / 2 - ICON_SIZE / 2 - BORDER_PADDING}
+				x={-width / 2 - ICON_SIZE / 2}
+				y={-height / 2 - ICON_SIZE / 2}
 				ref={iconRef}
-				rotation={childRotation}
+				rotation={-rotation}
+				anchor={0.5}
 			/>
 			<ReactSprite
 				texture={Texture.from(deleteTexture)}
@@ -69,9 +63,10 @@ const EditorItem = ({ isSelected, viewContainerRef, ...props }: Props) => {
 				cursor="pointer"
 				width={ICON_SIZE}
 				height={ICON_SIZE}
-				x={width / 2 - ICON_SIZE / 2 + BORDER_PADDING}
-				y={-height / 2 - ICON_SIZE / 2 - BORDER_PADDING}
-				rotation={childRotation}
+				x={width / 2 + ICON_SIZE / 2}
+				y={-height / 2 - ICON_SIZE / 2}
+				rotation={-rotation}
+				anchor={0.5}
 			/>
 			<ReactSprite
 				texture={Texture.from(copyTexture)}
@@ -79,9 +74,9 @@ const EditorItem = ({ isSelected, viewContainerRef, ...props }: Props) => {
 				cursor="pointer"
 				width={ICON_SIZE}
 				height={ICON_SIZE}
-				x={-ICON_SIZE / 2}
-				y={height / 2 + BORDER_PADDING - ICON_SIZE / 2}
-				rotation={childRotation}
+				y={height / 2 + (ICON_SIZE / 4) * 3}
+				rotation={-rotation}
+				anchor={0.5}
 			/>
 		</ReactSprite>
 	);

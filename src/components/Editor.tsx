@@ -142,7 +142,7 @@ const Editor = () => {
 					}
 
 					const prevRotation = obj.rotation ?? 0;
-					const updatedRotation = (prevRotation + Math.PI / 2) % (Math.PI * 2); 
+					const updatedRotation = (prevRotation + Math.PI / 2) % (Math.PI * 2);
 
 					return { ...obj, rotation: updatedRotation };
 				});
