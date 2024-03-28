@@ -16,12 +16,10 @@ import { useDragging } from '../hooks/useDragging';
 import Grid from './Grid';
 import Viewport from './Viewport';
 import { EditorItem } from './EditorItem';
-import { CoordinatesProvider } from './ItemsContext';
-import TestComponent from './TestComponent';
 
 const stageWidth = 1600; // Width of the entire stage
 const stageHeight = 1600; // Height of the entire stage
-const visibleSquareSize = 800; // S
+const viewportSize = 800; // S
 
 const CELL_SIZE = 20;
 
@@ -144,7 +142,7 @@ const Editor = () => {
 					}
 
 					const prevRotation = obj.rotation ?? 0;
-					const updatedRotation = prevRotation + Math.PI / 2;
+					const updatedRotation = (prevRotation + Math.PI / 2) % (Math.PI * 2); 
 
 					return { ...obj, rotation: updatedRotation };
 				});
@@ -411,7 +409,7 @@ const Editor = () => {
 		[onAreaSelectionMouseUp, app, onMouseMove]
 	);
 
-	console.log('rerender of editor');
+	console.log('------ rerender of editor -------');
 
 	return (
 		<div
@@ -420,7 +418,7 @@ const Editor = () => {
 				flexDirection: 'column',
 				gap: 20,
 				width: '100%',
-				height: '100vh', // Ensure the component fills the viewport height
+				height: '100vh',
 			}}
 		>
 			<div>
@@ -447,16 +445,16 @@ const Editor = () => {
 					// 	console.log('pointer down on stage');
 					// }}
 					// onPointerMove={handleMouseMove}
-					width={visibleSquareSize}
-					height={visibleSquareSize}
+					width={viewportSize}
+					height={viewportSize}
 					onMount={setApp}
 					ref={stageRef}
 				>
 					<Viewport
 						width={stageWidth}
 						height={stageHeight}
-						screenHeight={visibleSquareSize}
-						screenWidth={visibleSquareSize}
+						screenHeight={viewportSize}
+						screenWidth={viewportSize}
 						ref={viewportRef}
 					>
 						<Container

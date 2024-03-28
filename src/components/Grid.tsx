@@ -4,14 +4,14 @@ import { Graphics } from 'pixi.js';
 
 const highlightedSquareSize = 5;
 
-const Grid = ({ width, height, cellSize, isGridVisible, ...props }) => {
+const Grid = ({ width, height, cellSize, ...props }) => {
 	const gridWidth = Math.floor(width / cellSize);
 	const gridHeight = Math.floor(height / cellSize);
 
 	const drawGrid = useCallback(
 		(g: Graphics) => {
 			g.clear();
-			g.lineStyle(2, 0xcccccc, 0.5);
+			g.lineStyle(1, 0xcccccc, 0.5);
 
 			for (let i = 0; i <= gridWidth; i++) {
 				const x = i * cellSize;
@@ -27,7 +27,7 @@ const Grid = ({ width, height, cellSize, isGridVisible, ...props }) => {
 
 			for (let x = 0; x < gridWidth; x += highlightedSquareSize) {
 				for (let y = 0; y < gridHeight; y += highlightedSquareSize) {
-					g.lineStyle(3, 0x888888, 1);
+					g.lineStyle(2, 0x888888, 1);
 					g.drawRect(
 						x * cellSize,
 						y * cellSize,

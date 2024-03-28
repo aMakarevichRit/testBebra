@@ -1,5 +1,4 @@
-import { useCallback, useContext, useRef } from 'react';
-import { CoordinatesContext } from '../components/ItemsContext';
+import { useCallback, useRef } from 'react';
 
 const useDragging = (
 	updateItem,

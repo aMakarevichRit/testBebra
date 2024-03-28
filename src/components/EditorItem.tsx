@@ -5,71 +5,83 @@ import deleteTexture from '../assets/delete.png';
 import rotateTexture from '../assets/rotate.png';
 import copyTexture from '../assets/copy.png';
 
-interface Props {}
+interface Props {
+	isSelected: boolean;
+	// Additional props may include position, scale, etc.
+}
 
-const ICON_SIZE = 20;
-const BORDER_PADDING = 30;
+const ICON_SIZE = 80;
+const BORDER_PADDING = 50;
 
 const EditorItem = ({ isSelected, viewContainerRef, ...props }: Props) => {
 	const itemRef = useRef<Sprite>(null);
+	const iconRef = useRef<Sprite>(null);
+	const borderRef = useRef<Graphics>(null);
+
+	const { width, height } = itemRef.current?.texture || { width: 0, height: 0 };
+
+	console.log('rotation', itemRef.current?.rotation, itemRef.current?.worldTransform);
+	console.log('icon rotation', iconRef.current?.rotation, iconRef.current?.worldTransform);
+	console.log('border rotation', borderRef.current?.rotation);
 
 	const drawContainer = (g: Graphics) => {
 		if (!itemRef.current || !g) {
 			return;
 		}
 
-		const width = itemRef.current.width;
-		const height = itemRef.current.height;
-		console.log('width', width, height);
-		// Calculate border position and size considering scale and padding
-		const scaleX = itemRef.current.scale.x;
-		const scaleY = itemRef.current.scale.y;
-
-		const borderX = (-BORDER_PADDING * scaleX) / 2;
-		const borderY = (-BORDER_PADDING * scaleY) / 2;
-		const borderWidth = (width + BORDER_PADDING) * scaleX;
-		const borderHeight = (height + BORDER_PADDING) * scaleY;
-
 		g.clear();
-		g.lineStyle(2, 0xadd8e6, 1);
-		g.drawRoundedRect(borderX, borderY, borderWidth, borderHeight, 16);
+		g.lineStyle(10, 0xadd8e6, 1);
+		g.drawRoundedRect(
+			-width / 2 - BORDER_PADDING,
+			-height / 2 - BORDER_PADDING,
+			width + BORDER_PADDING * 2,
+			height + BORDER_PADDING * 2,
+			36
+		);
 	};
-
-	console.log('rerender of sprite');
 
 	if (!isSelected) {
 		return <ReactSprite {...props} ref={itemRef} />;
 	}
 
+	const childRotation =
+		itemRef.current?.rotation !== undefined
+			? -((itemRef.current.rotation + Math.PI / 2) % (Math.PI * 2))
+			: 0;
+
 	return (
 		<ReactSprite {...props} ref={itemRef}>
-			<GraphicsComponent draw={drawContainer} />
+			<GraphicsComponent draw={drawContainer} ref={borderRef} rotation={childRotation} />
 			<ReactSprite
 				texture={Texture.from(rotateTexture)}
-				x={-BORDER_PADDING}
-				y={-BORDER_PADDING - ICON_SIZE}
 				onclick={() => console.log('rotate')}
 				cursor="pointer"
 				width={ICON_SIZE}
 				height={ICON_SIZE}
+				x={-width / 2 - ICON_SIZE / 2 - BORDER_PADDING}
+				y={-height / 2 - ICON_SIZE / 2 - BORDER_PADDING}
+				ref={iconRef}
+				rotation={childRotation}
 			/>
 			<ReactSprite
 				texture={Texture.from(deleteTexture)}
-				x={itemRef.current?.width - ICON_SIZE / 2}
-				y={-BORDER_PADDING - ICON_SIZE}
 				onclick={() => console.log('delete')}
 				cursor="pointer"
 				width={ICON_SIZE}
 				height={ICON_SIZE}
+				x={width / 2 - ICON_SIZE / 2 + BORDER_PADDING}
+				y={-height / 2 - ICON_SIZE / 2 - BORDER_PADDING}
+				rotation={childRotation}
 			/>
 			<ReactSprite
 				texture={Texture.from(copyTexture)}
-				x={-BORDER_PADDING / 2 + itemRef.current?.width / 2 - ICON_SIZE / 2}
-				y={itemRef.current?.height - BORDER_PADDING / 2 + ICON_SIZE / 2}
-				onclick={() => console.log('delete')}
+				onclick={() => console.log('copy')}
 				cursor="pointer"
 				width={ICON_SIZE}
 				height={ICON_SIZE}
+				x={-ICON_SIZE / 2}
+				y={height / 2 + BORDER_PADDING - ICON_SIZE / 2}
+				rotation={childRotation}
 			/>
 		</ReactSprite>
 	);
