@@ -1,50 +1,47 @@
-import { Graphics, Point, Rectangle } from 'pixi.js';
+import { Point, Rectangle } from 'pixi.js';
 import { useCallback, useRef } from 'react';
-import { Graphics as GraphicsComponent } from '@pixi/react';
+import { DashLineShader, SmoothGraphics } from '@pixi/graphics-smooth';
 
-const useAreaSelection = (stage, setSelectedItems, viewContainerRef) => {
+const useAreaSelection = (setSelectedItems, stage, viewContainerRef) => {
 	const endPoint = useRef(null);
 	const startPoint = useRef(null);
-	const graphicsRef = useRef(null);
+	const shader = useRef<DashLineShader | null>(null);
+	const smoothGraphics = useRef<SmoothGraphics | null>(null);
 
-	const drawSelectionRectangle = useCallback(
-		(graphics: Graphics) => {
-			if (!startPoint.current || !endPoint.current || !stage) {
-				graphics.clear();
-				return;
-			}
+	const drawSelectionRectangle = useCallback(() => {
+		const graphics = smoothGraphics.current;
+		if (!graphics || !shader.current) {
+			return;
+		}
 
-			if (graphics && startPoint.current && endPoint.current) {
-				const globalPos1 = stage.toLocal(
-					new Point(startPoint.current.x, startPoint.current.y),
-					stage
-				);
-				const globalPos2 = stage.toLocal(
-					new Point(endPoint.current.x, endPoint.current.y),
-					stage
-				);
+		if (!startPoint.current || !endPoint.current) {
+			graphics.clear();
+			return;
+		}
 
-				const selectionRect = new Rectangle(
-					Math.min(globalPos1.x, globalPos2.x),
-					Math.min(globalPos1.y, globalPos2.y),
-					Math.abs(globalPos1.x - globalPos2.x),
-					Math.abs(globalPos1.y - globalPos2.y)
-				);
+		if (graphics && startPoint.current && endPoint.current) {
+			const globalPos1 = stage.toLocal(new Point(startPoint.current.x, startPoint.current.y));
+			const globalPos2 = stage.toLocal(new Point(endPoint.current.x, endPoint.current.y));
 
-				graphics.clear();
-				graphics.beginFill(0x0077ff, 0.3);
-				graphics.lineStyle(2, 0x0077ff);
-				graphics.drawRoundedRect(
-					selectionRect.x,
-					selectionRect.y,
-					selectionRect.width,
-					selectionRect.height,
-					4
-				);
-			}
-		},
-		[stage]
-	);
+			const selectionRect = new Rectangle(
+				Math.min(globalPos1.x, globalPos2.x),
+				Math.min(globalPos1.y, globalPos2.y),
+				Math.abs(globalPos1.x - globalPos2.x),
+				Math.abs(globalPos1.y - globalPos2.y)
+			);
+
+			graphics.clear();
+			graphics.beginFill(0xadd8e6, 0.3);
+			graphics.lineStyle({ width: 2, color: 0xadd8e6, shader: shader.current });
+			graphics.drawRoundedRect(
+				selectionRect.x,
+				selectionRect.y,
+				selectionRect.width,
+				selectionRect.height,
+				4
+			);
+		}
+	}, [stage]);
 
 	const handleMouseMove = useCallback(
 		(e) => {
@@ -54,7 +51,7 @@ const useAreaSelection = (stage, setSelectedItems, viewContainerRef) => {
 
 			const local = viewContainerRef.current.toLocal(e.global);
 			endPoint.current = { x: local.x, y: local.y };
-			drawSelectionRectangle(graphicsRef.current);
+			drawSelectionRectangle();
 		},
 		[endPoint, drawSelectionRectangle, viewContainerRef]
 	);
@@ -64,6 +61,10 @@ const useAreaSelection = (stage, setSelectedItems, viewContainerRef) => {
 			if (e.target.isSprite || !viewContainerRef.current) {
 				return;
 			}
+
+			shader.current = new DashLineShader({ dash: 36, gap: 6 });
+			smoothGraphics.current = new SmoothGraphics();
+			viewContainerRef.current.addChild(smoothGraphics.current);
 
 			const local = viewContainerRef.current.toLocal(e.global);
 			startPoint.current = { x: local.x, y: local.y };
@@ -102,19 +103,15 @@ const useAreaSelection = (stage, setSelectedItems, viewContainerRef) => {
 
 			startPoint.current = null;
 			endPoint.current = null;
+			viewContainerRef.current.removeChild(smoothGraphics.current);
 		},
 		[viewContainerRef, setSelectedItems]
-	);
-
-	const AreaSelectionComponent = () => (
-		<GraphicsComponent draw={drawSelectionRectangle} ref={graphicsRef} zIndex={100} />
 	);
 
 	return {
 		onAreaSelectionMouseUp: handleMouseUp,
 		onAreaSelectionMouseDown: handleMouseDown,
 		onAreaSelectionMouseMove: handleMouseMove,
-		AreaSelectionComponent,
 	};
 };
 

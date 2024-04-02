@@ -16,6 +16,7 @@ import { useDragging } from '../hooks/useDragging';
 import Grid from './Grid';
 import Viewport from './Viewport';
 import { EditorItem } from './EditorItem';
+import { rotateBy90 } from '../utils';
 
 const stageWidth = 1600; // Width of the entire stage
 const stageHeight = 1600; // Height of the entire stage
@@ -66,21 +67,15 @@ const Editor = () => {
 	const [isEditMode, setIsEditMode] = useState(true);
 	const [app, setApp] = useState<Application<ICanvas>>();
 	const isClickOnArea = useRef(false);
-	const stageRef = useRef();
 	const viewContainerRef = useRef();
-	const viewportRef = useRef();
 
 	useEffect(() => {
 		globalThis.__PIXI_APP__ = app;
 	}, [app]);
 	const { handleCopy, handlePaste } = useCopy(selectedItems, onPaste);
 
-	const {
-		onAreaSelectionMouseDown,
-		onAreaSelectionMouseUp,
-		onAreaSelectionMouseMove,
-		AreaSelectionComponent,
-	} = useAreaSelection(app?.stage, setSelectedItems, viewContainerRef);
+	const { onAreaSelectionMouseDown, onAreaSelectionMouseUp, onAreaSelectionMouseMove } =
+		useAreaSelection(setSelectedItems, app?.stage, viewContainerRef);
 	useKeyboard(isEditMode, handleKeyDown);
 	useWheel(isEditMode, handleResize);
 
@@ -122,6 +117,29 @@ const Editor = () => {
 		});
 	}
 
+	const onRotate = (id) => {
+		const updatedObjects = objects.map((obj) => {
+			if (obj.id !== id) {
+				return obj;
+			}
+
+			const prevRotation = obj.rotation ?? 0;
+			const updatedRotation = rotateBy90(prevRotation);
+
+			return { ...obj, rotation: updatedRotation };
+		});
+		setObjects(updatedObjects);
+	};
+
+	const onDelete = (id) => {
+		setObjects((prevObjects) => prevObjects.filter((obj) => obj.id !== id));
+		updateSelectedItems(id);
+	};
+
+	const onCopy = (id) => {
+		onPaste(id);
+	};
+
 	function handleKeyDown(event) {
 		event.preventDefault();
 		let updatedObjects = null;
@@ -131,7 +149,9 @@ const Editor = () => {
 				updatedObjects = objects.filter((obj) => !selectedItems.includes(obj.id));
 				setSelectedItems([]);
 				break;
-
+			case 'Escape':
+				setSelectedItems([]);
+				break;
 			case 'R':
 			case 'К':
 			case 'к':
@@ -142,7 +162,7 @@ const Editor = () => {
 					}
 
 					const prevRotation = obj.rotation ?? 0;
-					const updatedRotation = (prevRotation + Math.PI / 2) % (Math.PI * 2);
+					const updatedRotation = rotateBy90(prevRotation);
 
 					return { ...obj, rotation: updatedRotation };
 				});
@@ -253,6 +273,7 @@ const Editor = () => {
 	};
 
 	const boxes = objects.map(({ id, position, scale, rotation, textureSrc, zIndex, alpha }) => {
+		console.log('rotation', rotation, position);
 		return (
 			<EditorItem
 				key={id}
@@ -269,6 +290,9 @@ const Editor = () => {
 				tint={selectedItems.includes(id) ? '#F43F5E' : 0xffffff}
 				isSelected={selectedItems.includes(id)}
 				viewContainerRef={viewContainerRef}
+				onRotate={onRotate}
+				onDelete={onDelete}
+				onCopy={onCopy}
 			/>
 		);
 	});
@@ -441,22 +465,11 @@ const Editor = () => {
 						eventMode: 'static',
 					}}
 					onContextMenu={(e) => e.preventDefault()}
-					// onPointerDown={(e) => {
-					// 	console.log('pointer down on stage');
-					// }}
-					// onPointerMove={handleMouseMove}
 					width={viewportSize}
 					height={viewportSize}
 					onMount={setApp}
-					ref={stageRef}
 				>
-					<Viewport
-						width={stageWidth}
-						height={stageHeight}
-						screenHeight={viewportSize}
-						screenWidth={viewportSize}
-						ref={viewportRef}
-					>
+					<Viewport width={stageWidth} height={stageHeight}>
 						<Container
 							sortableChildren={true}
 							eventMode="static"
@@ -474,7 +487,6 @@ const Editor = () => {
 							ref={viewContainerRef}
 						>
 							<Grid width={stageWidth} height={stageHeight} cellSize={CELL_SIZE} />
-							<AreaSelectionComponent />
 							{boxes}
 						</Container>
 					</Viewport>
