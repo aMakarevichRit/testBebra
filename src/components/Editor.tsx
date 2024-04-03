@@ -104,15 +104,19 @@ const Editor = () => {
 
 	function onPaste(parsedData) {
 		setObjects((prevObjects) => {
+			debugger;
 			const targetObjects = prevObjects.filter((obj) => parsedData.includes(obj.id));
+			const shift = 40;
 			const copies = targetObjects.map((obj) => ({
 				...obj,
 				id: obj.id + Math.random(),
 				position: {
-					x: obj.position.x + 40,
-					y: obj.position.y + 40,
+					x: obj.position.x + shift,
+					y: obj.position.y + shift,
 				},
 			}));
+			setSelectedItems(copies.map((obj) => obj.id));
+
 			return [...prevObjects, ...copies];
 		});
 	}
@@ -137,7 +141,7 @@ const Editor = () => {
 	};
 
 	const onCopy = (id) => {
-		onPaste(id);
+		onPaste([id]);
 	};
 
 	function handleKeyDown(event) {
@@ -271,31 +275,6 @@ const Editor = () => {
 			}
 		});
 	};
-
-	const boxes = objects.map(({ id, position, scale, rotation, textureSrc, zIndex, alpha }) => {
-		console.log('rotation', rotation, position);
-		return (
-			<EditorItem
-				key={id}
-				texture={Texture.from(textureSrc)}
-				alpha={alpha}
-				position={position}
-				rotation={rotation}
-				scale={scale}
-				zIndex={zIndex}
-				cursor="pointer"
-				eventMode="static"
-				anchor={0.5}
-				data-id={id}
-				tint={selectedItems.includes(id) ? '#F43F5E' : 0xffffff}
-				isSelected={selectedItems.includes(id)}
-				viewContainerRef={viewContainerRef}
-				onRotate={onRotate}
-				onDelete={onDelete}
-				onCopy={onCopy}
-			/>
-		);
-	});
 
 	const onAddObject = useCallback((type) => {
 		setObjects((prevObjects) => [
@@ -432,6 +411,34 @@ const Editor = () => {
 		},
 		[onAreaSelectionMouseUp, app, onMouseMove]
 	);
+
+	const boxes = objects.map(({ id, position, scale, rotation, textureSrc, zIndex, alpha }) => {
+		debugger;
+		const texture = Texture.from(textureSrc);
+		return (
+			<EditorItem
+				key={id}
+				texture={texture}
+				alpha={alpha}
+				position={position}
+				rotation={rotation}
+				scale={scale}
+				zIndex={zIndex}
+				cursor="pointer"
+				eventMode="static"
+				anchor={0.5}
+				data-id={id}
+				tint={selectedItems.includes(id) ? '0xadd8e6' : 0xffffff}
+				isSelected={selectedItems.includes(id)}
+				viewContainerRef={viewContainerRef}
+				onRotate={onRotate}
+				onDelete={onDelete}
+				onCopy={onCopy}
+				width={texture.width}
+				height={texture.height}
+			/>
+		);
+	});
 
 	console.log('------ rerender of editor -------');
 
