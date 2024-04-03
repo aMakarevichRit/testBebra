@@ -77,7 +77,6 @@ const Editor = () => {
 	const { onAreaSelectionMouseDown, onAreaSelectionMouseUp, onAreaSelectionMouseMove } =
 		useAreaSelection(setSelectedItems, app?.stage, viewContainerRef);
 	useKeyboard(isEditMode, handleKeyDown);
-	useWheel(isEditMode, handleResize);
 
 	const updateItem = useCallback((updatedState, id) => {
 		setObjects((prevObjects) =>
@@ -225,33 +224,6 @@ const Editor = () => {
 		}
 
 		if (updatedObjects) {
-			setObjects(updatedObjects);
-		}
-	}
-
-	function handleResize(event) {
-		if (!isEditMode) {
-			return;
-		}
-		event.preventDefault();
-
-		if (selectedItems.length > 0 && event.shiftKey) {
-			const scaleFactor = event.deltaY > 0 ? 0.9 : 1.1;
-
-			const updatedObjects = objects.map((obj) => {
-				if (!selectedItems.includes(obj.id)) {
-					return obj;
-				}
-
-				const prevScale = obj.scale ?? 0;
-				const updatedScale = {
-					x: prevScale.x * scaleFactor,
-					y: prevScale.y * scaleFactor,
-				};
-
-				return { ...obj, scale: updatedScale };
-			});
-
 			setObjects(updatedObjects);
 		}
 	}
