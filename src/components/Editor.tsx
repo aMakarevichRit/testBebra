@@ -297,7 +297,7 @@ const Editor = () => {
 			setSelectedItems([]);
 		},
 		[app, onDragEnd, onPointerMove, isDragging]
-	);
+	); 
 
 	const onPointerUpOutside = useCallback(
 		(e: FederatedPointerEvent) => {
@@ -385,7 +385,6 @@ const Editor = () => {
 	);
 
 	const boxes = objects.map(({ id, position, scale, rotation, textureSrc, zIndex, alpha }) => {
-		debugger;
 		const texture = Texture.from(textureSrc);
 		return (
 			<EditorItem
